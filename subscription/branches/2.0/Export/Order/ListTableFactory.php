@@ -1,11 +1,11 @@
 <?php declare(strict_types=1);
 
-namespace tiFy\Plugins\Subscription\Export\ExportOrder;
+namespace tiFy\Plugins\Subscription\Export\Order;
 
 use tiFy\Plugins\Subscription\SubscriptionAwareTrait;
 use tiFy\Plugins\Transaction\Wordpress\Template\ExportListTableWpPost\Factory as BaseFactory;
 
-class ExportOrderTemplate extends BaseFactory
+class ListTableFactory extends BaseFactory
 {
     use SubscriptionAwareTrait;
 
@@ -54,7 +54,7 @@ class ExportOrderTemplate extends BaseFactory
                         },
                         'title'   => __('Prénom', 'theme'),
                     ],
-                    'company_name'       => [
+                    /*'company_name'       => [
                         'content' => function (Item $order) {
                             return ($u = $order->getCustomer()) ? ($u->getCompanyName() ?: __('n.r.', 'theme')) : '--';
                         },
@@ -66,7 +66,7 @@ class ExportOrderTemplate extends BaseFactory
                                 ? ($u->getCompanyStatus() ?: __('n.r.', 'theme')) : '--';
                         },
                         'title'   => __('Forme juridique', 'theme'),
-                    ],
+                    ],*/
                     'transaction_id'     => [
                         'content' => function (Item $order) {
                             return $order->getTransactionId() ?: '--';
@@ -215,6 +215,7 @@ class ExportOrderTemplate extends BaseFactory
                 'wordpress'    => [
                     'admin_menu' => [
                         'parent_slug' => 'subscription',
+                        'position'    => 3,
                     ],
                 ],
             ],

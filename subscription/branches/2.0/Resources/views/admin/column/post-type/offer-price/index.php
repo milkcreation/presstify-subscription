@@ -2,6 +2,7 @@
 /**
  * @var tiFy\Column\ColumnView $this
  * @var tiFy\Plugins\Subscription\Offer\QueryOffer $offer
+ * @var tiFy\Plugins\Subscription\SubscriptionSettings $settings
  */
 ?>
 <ul class="OfferPrice">
@@ -10,7 +11,7 @@
         <span>
             <big>
             <b>
-                <?php echo displayPrice($offer->getDisplayPrice(), [
+                <?php echo$offer->getPriceHtml(1, [
                     'tax_label' => ' ' . $offer->getTaxLabel(),
                 ]); ?>
             </b>

@@ -2,6 +2,7 @@
 
 namespace tiFy\Plugins\Subscription;
 
+use tiFy\Support\ParamsBag;
 use tiFy\Support\Proxy\Metabox;
 use tiFy\Wordpress\Proxy\Option;
 
@@ -16,6 +17,12 @@ class SubscriptionSettings
     private $booted = false;
 
     /**
+     * Instance du gestionnaire de paramètres.
+     * @var ParamsBag
+     */
+    protected $param;
+
+    /**
      * Initialisation.
      *
      * @return static
@@ -23,50 +30,73 @@ class SubscriptionSettings
     public function boot(): self
     {
         if (!$this->booted) {
-            // OPTIONS
+            /* OPTIONS */
             $optionPage = Option::registerPage('subscription-settings', [
                 'admin_menu' => [
                     'menu_title'  => __('Réglages', 'theme'),
                     'parent_slug' => 'subscription',
+                    'position'    => 4,
                 ],
             ]);
 
             $optionPage->registerSettings([
-                'currency_pos',
-                'price_thousand_sep',
-                'price_decimal_sep',
-                'price_num_decimals',
-                'calc_taxes',
-                'prices_include_tax',
-                'tax_display',
-                'price_display_suffix',
-                'custom_price_display_suffix',
+                'subscription_price',
+                'subscription_offer',
+            ]);
+            /**/
+
+            $this->param([
+                'price' => array_merge(
+                    $this->subscription()->config('settings.price', []),
+                    get_option('subscription_price') ?: []
+                ),
+                'offer' => array_merge(
+                    $this->subscription()->config('settings.offer', []),
+                    get_option('subscription_offer') ?: []
+                ),
             ]);
 
-            // METABOXES
-            $path = get_template_directory() . '/views/admin/metabox/options';
-            Metabox::stack('subscription-settings@options', 'tab', [
-                'subscription-prices' => [
-                    'title'  => __('Tarification', 'theme'),
-                    'viewer' => [
-                        'directory' => $path . '/subscription-prices',
-                    ],
+            /* METABOXES */
+            $path = dirname(__FILE__) . '/Resources/views/admin/metabox/options';
+            // -- Tarification
+            Metabox::add('subscription-price', [
+                'name'   => 'subscription_price',
+                'title'  => __('Tarification', 'theme'),
+                'viewer' => [
+                    'directory' => $path . '/price',
                 ],
-                'subscription-desc'   => [
-                    'title'  => __('Présentation des abonnements', 'theme'),
-                    'name'   => 'subscription_desc',
-                    'viewer' => [
-                        'directory' => $path . '/subscription-desc',
-                    ],
+            ])->setScreen('subscription-settings@options')->setContext('tab')
+                ->setHandler(function ($box) {
+                    $box->set('settings', $this);
+                });
+
+            // -- Offres
+            Metabox::add('subscription-offer', [
+                'name'   => 'subscription_offer',
+                'title'  => __('Offres', 'theme'),
+                'viewer' => [
+                    'directory' => $path . '/offer',
                 ],
-                'subscription-banner'   => [
-                    'title'  => __('Bannière d\'inscription', 'theme'),
-                    'name'   => 'subscription_banner',
-                    'viewer' => [
-                        'directory' => $path . '/subscription-banner',
-                    ],
+            ])->setScreen('subscription-settings@options')->setContext('tab')
+                ->setHandler(function ($box) {
+                    $box->set('settings', $this);
+                });
+
+            /*'subscription-desc'   => [
+                'title'  => __('Présentation des abonnements', 'theme'),
+                'name'   => 'subscription_desc',
+                'viewer' => [
+                    'directory' => $path . '/subscription-desc',
                 ],
-            ]);
+            ],
+            'subscription-banner'   => [
+                'title'  => __('Bannière d\'inscription', 'theme'),
+                'name'   => 'subscription_banner',
+                'viewer' => [
+                    'directory' => $path . '/subscription-banner',
+                ],
+            ]*/
+            /**/
 
             $this->booted = true;
         }
@@ -75,13 +105,23 @@ class SubscriptionSettings
     }
 
     /**
-     * Récupération de la devise utilisé par ma boutique.
+     * Récupération de la devise utilisée.
      *
      * @return string
      */
     public function getCurrency(): string
     {
-        return (string)get_option('currency', 'EUR');
+        return (string)$this->param('price.currency', 'EUR');
+    }
+
+    /**
+     * Récupération de la position de la devise.
+     *
+     * @return string
+     */
+    public function getCurrencyPos(): string
+    {
+        return (string)$this->param('price.currency_pos', 'right');
     }
 
     /**
@@ -91,7 +131,7 @@ class SubscriptionSettings
      */
     public function getPriceDecimals(): int
     {
-        return absint(get_option('price_num_decimals', 2));
+        return (int)$this->param('price.num_decimals', 2);
     }
 
     /**
@@ -101,7 +141,7 @@ class SubscriptionSettings
      */
     public function getPriceDecimalSeparator(): string
     {
-        return ($separator = get_option('price_decimal_sep')) ? stripslashes($separator) : '.';
+        return ($separator = $this->param('price.decimal_sep')) ? stripslashes($separator) : '.';
     }
 
     /**
@@ -111,7 +151,7 @@ class SubscriptionSettings
      */
     public function getPriceFormat(): string
     {
-        switch (get_option('currency_pos')) {
+        switch ($this->getCurrencyPos()) {
             default:
             case 'left':
                 $format = '%1$s%2$s';
@@ -137,7 +177,7 @@ class SubscriptionSettings
      */
     public function getPriceDisplaySuffix(): string
     {
-        return (string)get_option('price_display_suffix', '');
+        return (string)$this->param('price.display_suffix', '');
     }
 
     /**
@@ -147,7 +187,7 @@ class SubscriptionSettings
      */
     public function getPriceThousandSeparator(): ?string
     {
-        return stripslashes(get_option('price_thousand_sep'));
+        return stripslashes($this->param('price.thousand_sep', ''));
     }
 
     /**
@@ -157,7 +197,27 @@ class SubscriptionSettings
      */
     public function getTaxDisplay(): string
     {
-        return get_option('tax_display', 'incl') === 'excl' ? 'excl': 'incl';
+        return $this->param('price.tax_display', 'incl') === 'excl' ? 'excl' : 'incl';
+    }
+
+    /**
+     * Vérifie si la gestion de l'engagement est active.
+     *
+     * @return bool
+     */
+    public function isOfferDurationEnabled(): bool
+    {
+        return filter_var($this->param('offer.duration.enabled', 'on'), FILTER_VALIDATE_BOOLEAN);
+    }
+
+    /**
+     * Vérifie si la gestion du ré-engagement est actif.
+     *
+     * @return bool
+     */
+    public function isOfferRenewEnabled(): bool
+    {
+        return filter_var($this->param('offer.renew.enabled', 'on'), FILTER_VALIDATE_BOOLEAN);
     }
 
     /**
@@ -167,7 +227,7 @@ class SubscriptionSettings
      */
     public function isPricesIncludeTax()
     {
-        return static::isTaxEnabled() && filter_var(get_option('prices_include_tax'), FILTER_VALIDATE_BOOLEAN);
+        return filter_var($this->param('price.include_tax'), FILTER_VALIDATE_BOOLEAN);
     }
 
     /**
@@ -187,6 +247,29 @@ class SubscriptionSettings
      */
     public function isTaxEnabled(): bool
     {
-        return filter_var(get_option('calc_taxes', 'on'), FILTER_VALIDATE_BOOLEAN);
+        return filter_var($this->param('price.calc_taxes', 'on'), FILTER_VALIDATE_BOOLEAN);
+    }
+
+    /**
+     * Récupération de paramètre|Définition de paramètres|Instance du gestionnaire de paramètre.
+     *
+     * @param string|array|null $key Clé d'indice du paramètre à récupérer|Liste des paramètre à définir.
+     * @param mixed $default Valeur de retour par défaut lorsque la clé d'indice est une chaine de caractère.
+     *
+     * @return mixed|ParamsBag
+     */
+    public function param($key = null, $default = null)
+    {
+        if (!$this->param instanceof ParamsBag) {
+            $this->param = new ParamsBag();
+        }
+
+        if (is_string($key)) {
+            return $this->param->get($key, $default);
+        } elseif (is_array($key)) {
+            return $this->param->set($key);
+        } else {
+            return $this->param;
+        }
     }
 }

@@ -29,14 +29,26 @@ class Offer
             /* MENU D'ADMINISTRATION */
             add_action('admin_menu', function () {
                 add_submenu_page(
-                    'subscription',
+                    $this->subscription()->config('admin_menu.menu_slug', 'subscription'),
                     __('Liste des offres', 'theme'),
                     __('Offres', 'theme'),
                     'edit_posts',
                     'edit.php?post_type=subscription-offer',
                     '',
-                    2
+                    1
                 );
+            });
+            /**/
+
+            /* Déploiement du menu */
+            add_action('admin_head', function () {
+                global $parent_file, $post_type;
+
+                switch ($post_type) {
+                    case 'subscription-offer':
+                        $parent_file = 'subscription';
+                        break;
+                }
             });
             /**/
 
@@ -61,30 +73,30 @@ class Offer
 
             /* METADONNES */
             PostType::meta()
-                ->registerSingle('offer', '_label')
-                ->registerSingle('offer', '_sku')
-                ->registerSingle('offer', '_duration_length')
-                ->registerSingle('offer', '_duration_unity')
-                ->registerSingle('offer', '_price')
-                ->registerSingle('offer', '_tax')
-                ->registerSingle('offer', '_renewable_days')
-                ->registerSingle('offer', '_renew_notification');
+                ->registerSingle('subscription-offer', '_label')
+                ->registerSingle('subscription-offer', '_sku')
+                ->registerSingle('subscription-offer', '_duration_length')
+                ->registerSingle('subscription-offer', '_duration_unity')
+                ->registerSingle('subscription-offer', '_price')
+                ->registerSingle('subscription-offer', '_tax')
+                ->registerSingle('subscription-offer', '_renewable_days')
+                ->registerSingle('subscription-offer', '_renew_notification');
             /**/
 
             /* COLONNES */
-            Column::stack('offer@post_type', [
+            Column::stack('subscription-offer@post_type', [
                 'offer-price'   => [
                     'content'  => OfferPriceColumn::class,
                     'position' => 2,
                     'viewer'   => [
-                        'directory' => get_template_directory() . '/views/admin/column/post-type/offer-price',
+                        'directory' => $this->subscription()->resources('/views/admin/column/post-type/offer-price'),
                     ],
                 ],
                 'offer-details' => [
                     'content'  => OfferDetailsColumn::class,
                     'position' => 2.1,
                     'viewer'   => [
-                        'directory' => get_template_directory() . '/views/admin/column/post-type/offer-details',
+                        'directory' => $this->subscription()->resources('/views/admin/column/post-type/offer-details'),
                     ],
                 ],
                 'offer-order'   => [
@@ -95,20 +107,25 @@ class Offer
             /**/
 
             /* METABOXES */
-            Metabox::stack('offer@post_type', 'tab', [
-                'offer-details' => [
-                    'params' => [
-                        'device'    => $this->subscription()->functions()->getCurrencySymbol(),
-                        'taxable'   => $this->subscription()->settings()->isTaxEnabled(),
-                        'tax_label' => $this->subscription()->settings()->isPricesIncludeTax()
-                            ? __('TTC', 'theme') : __('HT', 'theme')
-                    ],
-                    'title'  => __('Détails du produit', 'theme'),
-                    'viewer' => [
-                        'directory' => get_template_directory() . '/views/admin/metabox/post-type/offer-details',
-                    ],
+            Metabox::add('offer-details', [
+                'params' => [
+                    'device'    => $this->subscription()->functions()->getCurrencySymbol(),
+                    'taxable'   => $this->subscription()->settings()->isTaxEnabled(),
+                    'tax_label' => $this->subscription()->settings()->isPricesIncludeTax()
+                        ? __('TTC', 'theme') : __('HT', 'theme'),
                 ],
-            ]);
+                'title'  => __('Détails du produit', 'theme'),
+                'viewer' => [
+                    'directory' => $this->subscription()->resources('/views/admin/metabox/post-type/offer-details'),
+                ],
+            ])
+                ->setScreen('subscription-offer@post_type')->setContext('tab')
+                ->setHandler(function ($box, WP_Post $wp_post) {
+                    $box->set([
+                        'offer'    => $this->subscription()->offer()->get($wp_post),
+                        'settings' => $this->subscription()->settings()
+                    ]);
+                });
             /**/
 
             $this->booted = true;

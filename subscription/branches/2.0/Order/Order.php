@@ -36,7 +36,7 @@ class Order
             /* MENU D'ADMINISTRATION */
             add_action('admin_menu', function () {
                 add_submenu_page(
-                    'subscription',
+                    $this->subscription()->config('admin_menu.menu_slug', 'subscription'),
                     __('Liste des commandes', 'theme'),
                     __('Commandes', 'theme'),
                     'edit_posts',
@@ -44,6 +44,18 @@ class Order
                     '',
                     1
                 );
+            });
+            /**/
+
+            /* Déploiement du menu */
+            add_action('admin_head', function () {
+                global $parent_file, $post_type;
+
+                switch ($post_type) {
+                    case 'subscription-order':
+                        $parent_file = 'subscription';
+                        break;
+                }
             });
             /**/
 
@@ -56,28 +68,6 @@ class Order
                     }
                 }
             });
-            /**/
-
-            /* Sauvegarde des commandes * /
-            add_action('save_post', function (int $id, WP_Post $post, bool $update) {
-                // Bypass - S'il s'agit d'une routine de sauvegarde automatique.
-                if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) {
-                    return;
-                    // Bypass - Si le script est executé via Ajax.
-                } elseif (defined('DOING_AJAX') && DOING_AJAX) {
-                    return;
-                } elseif ($post->post_type !== 'subscription-order') {
-                    return;
-                } elseif (!$order = $this->get($id)) {
-                    return;
-                }
-
-                if (is_admin() && ($paymentIntentId = Request::input('_stripe_payment_intent'))) {
-                    if ($paymentIntent = $this->subscription()->stripePayment()->retrieve($paymentIntentId)) {
-                        update_post_meta($id, '_stripe_payment_intent', $paymentIntentId);
-                    }
-                }
-            }, 10, 3);
             /**/
 
             /* Masquage de la modification rapide */
@@ -131,23 +121,23 @@ class Order
                     'content'  => OrderStatusColumn::class,
                     'position' => 2,
                     'viewer'   => [
-                        'directory' => get_template_directory() . '/views/admin/column/post-type/order-status',
+                        'directory' => $this->subscription()->resources('/views/admin/column/post-type/order-status'),
                     ],
                 ],
                 'order-total'    => [
                     'content'  => OrderTotalColumn::class,
                     'position' => 2.1,
                     'viewer'   => [
-                        'directory' => get_template_directory() . '/views/admin/column/post-type/order-total',
+                        'directory' => $this->subscription()->resources('/views/admin/column/post-type/order-total'),
                     ],
                 ],
             ]);
             /**/
 
             /* STATUT DE POST */
-            /* Commande - Attente de paiement */
+            /* Commande - Attente de réglement */
             $this->setStatus('pending', [
-                'name'                      => 'subscription-order-pending',
+                'name'                      => 'sbscodr-pending',
                 'label'                     => _x('En attente de paiement', 'order_status', 'theme'),
                 'public'                    => false,
                 'exclude_from_search'       => false,
@@ -162,7 +152,7 @@ class Order
             /**/
             /* Commande - En préparation */
             $this->setStatus('processing', [
-                'name'                      => 'subscription-order-processing',
+                'name'                      => 'sbscodr-processing',
                 'label'                     => _x('En préparation', 'order_status', 'theme'),
                 'public'                    => false,
                 'exclude_from_search'       => false,
@@ -177,7 +167,7 @@ class Order
             /**/
             /* Commande - En attente */
             $this->setStatus('on-hold', [
-                'name'                      => 'subscription-order-on-hold',
+                'name'                      => 'sbscodr-on-hold',
                 'label'                     => _x('En attente', 'order_status', 'theme'),
                 'public'                    => false,
                 'exclude_from_search'       => false,
@@ -192,7 +182,7 @@ class Order
             /**/
             /* Commande - Terminée */
             $this->setStatus('completed', [
-                'name'                      => 'subscription-order-completed',
+                'name'                      => 'sbscodr-completed',
                 'label'                     => _x('Terminée', 'order_status', 'theme'),
                 'public'                    => false,
                 'exclude_from_search'       => false,
@@ -207,7 +197,7 @@ class Order
             /**/
             /* Commande - Annulée */
             $this->setStatus('cancelled', [
-                'name'                      => 'subscription-order-cancelled',
+                'name'                      => 'sbscodr-cancelled',
                 'label'                     => _x('Annulée', 'order_status', 'theme'),
                 'public'                    => false,
                 'exclude_from_search'       => false,
@@ -222,7 +212,7 @@ class Order
             /**/
             /* Commande - Remboursée */
             $this->setStatus('refunded', [
-                'name'                      => 'subscription-order-refunded',
+                'name'                      => 'sbscodr-refunded',
                 'label'                     => _x('Remboursée', 'order_status', 'theme'),
                 'public'                    => false,
                 'exclude_from_search'       => false,
@@ -237,7 +227,7 @@ class Order
             /**/
             /* Commande - Echouée */
             $this->setStatus('failed', [
-                'name'                      => 'subscription-order-failed',
+                'name'                      => 'sbscodr-failed',
                 'label'                     => _x('Echouée', 'order_status', 'theme'),
                 'public'                    => false,
                 'exclude_from_search'       => false,
@@ -255,10 +245,10 @@ class Order
             Metabox::add('order-actions', [
                 'title'  => __('Actions sur la commande', 'theme'),
                 'viewer' => [
-                    'directory' => get_template_directory() . '/views/admin/metabox/post-type/order-actions',
+                    'directory' => $this->subscription()->resources('/views/admin/metabox/post-type/order-actions'),
                 ],
             ])
-                ->setScreen('order@post_type')->setContext('side')
+                ->setScreen('subscription-order@post_type')->setContext('side')
                 ->setHandler(function (MetaboxDriver $box, WP_Post $wp_post) {
                     $box->set('order', $this->subscription()->order()->get($wp_post));
                 });
@@ -266,10 +256,10 @@ class Order
             Metabox::add('order-details', [
                 'title'  => __('Détails de la commande', 'theme'),
                 'viewer' => [
-                    'directory' => get_template_directory() . '/views/admin/metabox/post-type/order-details',
+                    'directory' => $this->subscription()->resources('/views/admin/metabox/post-type/order-details'),
                 ],
             ])
-                ->setScreen('order@post_type')->setContext('tab')
+                ->setScreen('subscription-order@post_type')->setContext('tab')
                 ->setHandler(function (MetaboxDriver $box, WP_Post $wp_post) {
                     $box->set('order', $this->subscription()->order()->get($wp_post));
                 });
@@ -277,18 +267,20 @@ class Order
             Metabox::add('order-addresses', [
                 'title'  => __('Adresses', 'theme'),
                 'viewer' => [
-                    'directory' => get_template_directory() . '/views/admin/metabox/post-type/order-addresses',
+                    'directory' => $this->subscription()->resources('/views/admin/metabox/post-type/order-addresses'),
                 ],
-            ])->setScreen('order@post_type')->setContext('tab');
+            ])->setScreen('subscription-order@post_type')->setContext('tab');
 
             Metabox::add('order-billing', [
                 'parent' => 'order-addresses',
                 'title'  => __('Facturation', 'theme'),
                 'viewer' => [
-                    'directory' => get_template_directory() . '/views/admin/metabox/post-type/order-addresses/billing',
+                    'directory' => $this->subscription()->resources(
+                        '/views/admin/metabox/post-type/order-addresses/billing'
+                    ),
                 ],
             ])
-                ->setScreen('order@post_type')->setContext('tab')
+                ->setScreen('subscription-order@post_type')->setContext('tab')
                 ->setHandler(function (MetaboxDriver $box, WP_Post $wp_post) {
                     $box->set('order', $this->subscription()->order()->get($wp_post));
                 });
@@ -297,10 +289,12 @@ class Order
                 'parent' => 'order-addresses',
                 'title'  => __('Livraison', 'theme'),
                 'viewer' => [
-                    'directory' => get_template_directory() . '/views/admin/metabox/post-type/order-addresses/shipping',
+                    'directory' => $this->subscription()->resources(
+                        '/views/admin/metabox/post-type/order-addresses/shipping'
+                    ),
                 ],
             ])
-                ->setScreen('order@post_type')->setContext('tab')
+                ->setScreen('subscription-order@post_type')->setContext('tab')
                 ->setHandler(function (MetaboxDriver $box, WP_Post $wp_post) {
                     $box->set('order', $this->subscription()->order()->get($wp_post));
                 });
@@ -472,7 +466,7 @@ class Order
      */
     public function statusNeedPaymentNames(): array
     {
-        return ['order-failed', 'order-pending'];
+        return ['sbscodr-failed', 'sbscodr-pending'];
     }
 
     /**
@@ -502,7 +496,7 @@ class Order
      */
     public function statusPaymentCompleteNames(): array
     {
-        return ['order-completed', 'order-processing'];
+        return ['sbscodr-completed', 'sbscodr-processing'];
     }
 
     /**
