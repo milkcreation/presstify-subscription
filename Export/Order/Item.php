@@ -1,6 +1,6 @@
 <?php declare(strict_types=1);
 
-namespace tiFy\Plugins\Subscription\Export\ExportOrder;
+namespace tiFy\Plugins\Subscription\Export\Order;
 
 use tiFy\Plugins\Subscription\{SubscriptionAwareTrait, Order\QueryOrder};
 use tiFy\Template\Templates\ListTable\Contracts\Item as BaseItemContract;

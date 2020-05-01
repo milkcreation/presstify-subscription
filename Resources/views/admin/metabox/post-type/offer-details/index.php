@@ -2,6 +2,8 @@
 /**
  * @var tiFy\Contracts\Metabox\MetaboxView $this
  * @var WP_Post $wp_post
+ * @var tiFy\Plugins\Subscription\Offer\QueryOffer $offer
+ * @var tiFy\Plugins\Subscription\SubscriptionSettings $settings
  */
 ?>
 <h3 class="Form-title"><?php _e('Identification', 'theme'); ?></h3>
@@ -14,7 +16,7 @@
                     'class' => 'widefat',
                 ],
                 'name'  => '_label',
-                'value' => get_post_meta($wp_post->ID, '_label', true)
+                'value' => $offer->getLabel()
             ]); ?>
         </td>
     </tr>
@@ -26,32 +28,7 @@
                     'class' => 'widefat',
                 ],
                 'name'  => '_sku',
-                'value' => get_post_meta($wp_post->ID, '_sku', true)
-            ]); ?>
-        </td>
-    </tr>
-</table>
-
-<h3 class="Form-title"><?php _e('Engagement', 'theme'); ?></h3>
-<table class="Form-table">
-    <tr>
-        <th><?php _e('Durée de l\'abonnement', 'theme'); ?></th>
-        <td>
-            <?php echo field('number', [
-                'attrs' => [
-                    'min' => 0,
-                ],
-                'name'  => '_duration_length',
-                'value' => get_post_meta($wp_post->ID, '_duration_length', true)
-            ]); ?>
-            <?php echo field('select-js', [
-                'choices' => [
-                    'year'  => __('Année(s)', 'theme'),
-                    'month' => __('Mois', 'theme'),
-                    'day'   => __('Jour(s)', 'theme'),
-                ],
-                'name'    => '_duration_unity',
-                'value' => get_post_meta($wp_post->ID, '_duration_unity', true)
+                'value' => $offer->getSku()
             ]); ?>
         </td>
     </tr>
@@ -67,11 +44,11 @@
                     'min' => 0,
                 ],
                 'name' => '_price',
-                'value' => get_post_meta($wp_post->ID, '_price', true)
+                'value' => $offer->getPrice()
             ]), $this->params('device')); ?>
         </td>
     </tr>
-    <?php if ($this->params('taxable')) : ?>
+    <?php if ($this->params('price.taxable')) : ?>
     <tr>
         <th><?php _e('Montant de TVA', 'theme'); ?></th>
         <td>
@@ -82,13 +59,41 @@
                     'step'=> '0.01'
                 ],
                 'name' => '_tax',
-                'value' => get_post_meta($wp_post->ID, '_tax', true)
+                'value' => $offer->getTax()
             ]); ?>%
         </td>
     </tr>
     <?php endif; ?>
 </table>
 
+<?php if ($settings->isOfferDurationEnabled()) : ?>
+<h3 class="Form-title"><?php _e('Engagement', 'theme'); ?></h3>
+<table class="Form-table">
+    <tr>
+        <th><?php _e('Durée de l\'abonnement', 'theme'); ?></th>
+        <td>
+            <?php echo field('number', [
+                'attrs' => [
+                    'min' => 0,
+                ],
+                'name'  => '_duration_length',
+                'value' => $offer->getDurationLength()
+            ]); ?>
+            <?php echo field('select-js', [
+                'choices' => [
+                    'year'  => __('Année(s)', 'theme'),
+                    'month' => __('Mois', 'theme'),
+                    'day'   => __('Jour(s)', 'theme'),
+                ],
+                'name'    => '_duration_unity',
+                'value' => $offer->getDurationUnity()
+            ]); ?>
+        </td>
+    </tr>
+</table>
+<?php endif; ?>
+
+<?php if ($settings->isOfferRenewEnabled()) : ?>
 <h3 class="Form-title"><?php _e('Ré-engagement', 'theme'); ?></h3>
 <table class="Form-table">
     <tr>
@@ -99,7 +104,7 @@
                      'min' => 0,
                 ],
                 'name'  => '_renewable_days',
-                'value' => get_post_meta($wp_post->ID, '_renewable_days', true) ? : 0
+                'value' => $offer->getRenewableDays()
             ])); ?>
         </td>
     </tr>
@@ -108,8 +113,9 @@
         <td>
             <?php echo field('toggle-switch', [
                 'name'  => '_renew_notification',
-                'value' => get_post_meta($wp_post->ID, '_renew_notification', true) === 'off' ? 'off': 'on'
+                'value' => $offer->isRenewNotify() === 'on' ? 'on': 'off'
             ]); ?>
         </td>
     </tr>
 </table>
+<?php endif;

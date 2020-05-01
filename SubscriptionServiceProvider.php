@@ -2,7 +2,12 @@
 
 namespace tiFy\Plugins\Subscription;
 
-use tiFy\Plugins\Subscription\{Export\Export as ExportManager, Order\Order as OrderManager, Offer\Offer as OfferManager};
+use tiFy\Plugins\Subscription\{
+    Export\Export as ExportManager,
+    Gateway\Gateway as GatewayManager,
+    Order\Order as OrderManager,
+    Offer\Offer as OfferManager
+};
 use tiFy\Container\ServiceProvider;
 
 class SubscriptionServiceProvider extends ServiceProvider
@@ -16,6 +21,7 @@ class SubscriptionServiceProvider extends ServiceProvider
         'subscription',
         'subscription.functions',
         'subscription.export',
+        'subscription.gateway',
         'subscription.offer',
         'subscription.order',
         'subscription.settings',
@@ -27,7 +33,7 @@ class SubscriptionServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        add_action('after_setup_theme', function () {
+        add_action('init', function () {
             $this->getContainer()->get('subscription')->boot();
         });
     }
@@ -38,7 +44,7 @@ class SubscriptionServiceProvider extends ServiceProvider
     public function register()
     {
         $this->getContainer()->share('subscription', function () {
-            return new Subscription($this->getContainer());
+            return new Subscription(config('subscription', []), $this->getContainer());
         });
 
         $this->getContainer()->share('subscription.functions', function () {
@@ -47,6 +53,10 @@ class SubscriptionServiceProvider extends ServiceProvider
 
         $this->getContainer()->share('subscription.export', function () {
             return (new ExportManager())->setSubscription($this->getContainer()->get('subscription'));
+        });
+
+        $this->getContainer()->share('subscription.gateway', function () {
+            return (new GatewayManager())->setSubscription($this->getContainer()->get('subscription'));
         });
 
         $this->getContainer()->share('subscription.offer', function () {

@@ -2,15 +2,21 @@
 
 namespace tiFy\Plugins\Subscription\Order;
 
-use tiFy\Plugins\Subscription\SubscriptionAwareTrait;
 use App\Wordpress\QueryUser;
+use Exception;
 use Illuminate\Support\Collection;
 use tiFy\Contracts\Mail\Mail as MailContract;
 use tiFy\Contracts\PostType\PostTypeStatus;
-use tiFy\Support\Proxy\Router;
-use tiFy\Wordpress\Contracts\Query\QueryComment as QueryCommentContract;
-use tiFy\Wordpress\Contracts\Query\QueryPost as QueryPostContract;
-use tiFy\Wordpress\Contracts\Query\QueryUser as QueryUserContract;
+use tiFy\Plugins\Subscription\{
+    Contracts\PaymentGateway,
+    SubscriptionAwareTrait
+};
+use tiFy\Plugins\Subscription\QuerySubscription;
+use tiFy\Wordpress\Contracts\Query\{
+    QueryComment as QueryCommentContract,
+    QueryPost as QueryPostContract,
+    QueryUser as QueryUserContract
+};
 use tiFy\Wordpress\Query\QueryPost as BaseQueryPost;
 use tiFy\Support\{DateTime, Proxy\Mail};
 use WP_Post, WP_Query;
@@ -41,25 +47,34 @@ class QueryOrder extends BaseQueryPost
      * @var array
      */
     protected $metasMap = [
-        'card_last4'            => '_card_last4',
-        'created_via'           => '_created_via',
-        'currency'              => '_order_currency',
-        'customer_id'           => '_customer_user',
-        'customer_ip_address'   => '_customer_ip_address',
-        'customer_user_agent'   => '_customer_user_agent',
-        'date_completed'        => '_date_completed',
-        'date_paid'             => '_date_paid',
-        'order_key'             => '_order_key',
-        'payment_method'        => '_payment_method',
-        'payment_method_title'  => '_payment_method_title',
-        'prices_include_tax'    => '_prices_include_tax',
-        'stripe_payment_intent' => '_stripe_payment_intent',
-        'subscription_id'       => '_subscription_id',
-        'transaction_id'        => '_transaction_id',
-        'total'                 => '_order_total',
-        'total_tax'             => '_order_tax',
-        'version'               => '_order_version',
+        'card_first'           => '_card_first',
+        'card_last'            => '_card_last',
+        'card_valid'           => '_card_valid',
+        'created_via'          => '_created_via',
+        'currency'             => '_order_currency',
+        'customer_id'          => '_customer_user',
+        'customer_ip_address'  => '_customer_ip_address',
+        'customer_user_agent'  => '_customer_user_agent',
+        'date_completed'       => '_date_completed',
+        'date_paid'            => '_date_paid',
+        'misc'                 => '_misc',
+        'order_key'            => '_order_key',
+        'payment_method'       => '_payment_method',
+        'payment_method_title' => '_payment_method_title',
+        'prices_include_tax'   => '_prices_include_tax',
+        'subscription_id'      => '_subscription_id',
+        'subscription_form'    => '_subscription_form',
+        'transaction_id'       => '_transaction_id',
+        'total'                => '_order_total',
+        'total_tax'            => '_order_tax',
+        'version'              => '_order_version',
     ];
+
+    /**
+     * Instance de la plateforme de paiement associée.
+     * @var PaymentGateway|false|null
+     */
+    protected $paymentGateway;
 
     /**
      * CONSTRUCTEUR.
@@ -73,6 +88,26 @@ class QueryOrder extends BaseQueryPost
         $this->setSubscription(subscription());
 
         parent::__construct($wp_post);
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public static function create($id = null, ...$args): ?QueryPostContract
+    {
+        if (is_numeric($id)) {
+            return static::createFromId((int)$id);
+        } elseif (is_string($id)) {
+            return static::createFromOrderKey($id);
+        } elseif ($id instanceof WP_Post) {
+            return static::build($id);
+        } elseif ($id instanceof QueryPostContract) {
+            return static::createFromId($id->getId());
+        } elseif (is_null($id)) {
+            return static::createFromGlobal();
+        } else {
+            return null;
+        }
     }
 
     /**
@@ -169,6 +204,78 @@ class QueryOrder extends BaseQueryPost
     }
 
     /**
+     * Création de l'abonnement associé à la commande en attente de paiement.
+     *
+     * @param array $args Liste des arguments de création complémentaires.
+     *
+     * @return QuerySubscription|null
+     *
+     * @throws Exception
+     */
+    public function createSubscription(array $args = []): ?QuerySubscription
+    {
+        if (!$line = $this->getLineItems()[0] ?: null) {
+            throw new Exception('OrderLine Unavalaible');
+        }
+
+        if ($subscr = $this->getSubscription()) {
+            return $subscr;
+        } elseif (!$subscr = QuerySubscription::insert()) {
+            throw new Exception('Subscription Uncreated');
+        } else {
+            $subscr->set(array_merge([
+                'duration_length'    => $line->getDurationLength(),
+                'duration_unity'     => $line->getDurationUnity(),
+                'offer_id'           => $line->getOfferId(),
+                'offer_label'        => $line->getLabel(),
+                'order_id'           => $this->getId(),
+                'renewable_days'     => $line->getRenewableDays(),
+                'renew_notification' => $line->isRenewNotify() ? 'on' : 'off',
+                'user_id'            => $this->getCustomerId(),
+                //'start_date'         => $line->calcStartDate()->format('Y-m-d H:i:s'),
+                //'end_date'           => $line->calcEndDate()->format('Y-m-d H:i:s'),
+                //'imported'           => false
+            ], $args))->update();
+
+            $this->set('subscription_id', $subscr->getId())->update();
+        }
+
+        return $subscr;
+    }
+
+    /**
+     * Création d'une instance de ligne de produit associée à la commande.
+     *
+     * @param array $attrs
+     *
+     * @return QueryOrderLineItem
+     */
+    public function createLineItem(array $attrs = []): QueryOrderLineItem
+    {
+        $lineItem = new QueryOrderLineItem($attrs);
+
+        return $this->lineItems[$lineItem->getHash() ?: $lineItem->generateHash()] = $lineItem;
+    }
+
+    /**
+     * Récupération de l'instance de la plateforme de paiement associée.
+     *
+     * @return PaymentGateway|null
+     */
+    public function getPaymentGateway(): ?PaymentGateway
+    {
+        if (is_null($this->paymentGateway)) {
+            if ($paymentGateway = $this->subscription()->gateway()->get($this->get('payment_method'))) {
+                $this->paymentGateway = $paymentGateway->setOrder($this);
+            } else {
+                $this->paymentGateway = false;
+            }
+        }
+
+        return $this->paymentGateway ?: null;
+    }
+
+    /**
      * Récupération d'attribut d'adresse de facturation.
      *
      * @param string|null $key Clé d'indice
@@ -182,13 +289,33 @@ class QueryOrder extends BaseQueryPost
     }
 
     /**
-     * Récupération des 4 derniers numéro de carte.
+     * Récupération des premiers numéros de la carte bancaire.
      *
      * @return string
      */
-    public function getCardLast4(): string
+    public function getCardFirst(): string
     {
-        return (string)$this->get('card_last4', '');
+        return (string)$this->get('card_first', '');
+    }
+
+    /**
+     * Récupération des derniers numéros de la carte bancaire.
+     *
+     * @return string
+     */
+    public function getCardLast(): string
+    {
+        return (string)$this->get('card_last', '');
+    }
+
+    /**
+     * Récupération de la date de validité de la carte bancaire.
+     *
+     * @return string
+     */
+    public function getCardValid(): string
+    {
+        return (string)$this->get('card_valid', '');
     }
 
     /**
@@ -236,6 +363,56 @@ class QueryOrder extends BaseQueryPost
     }
 
     /**
+     * Récupération de l'url de traitement de l'annulation de paiement.
+     *
+     * @return string
+     */
+    public function getHandleCancelledUrl(): string
+    {
+        return $this->subscription()->route('handle-cancelled')->getUrl([$this->getOrderKey()], true);
+    }
+
+    /**
+     * Récupération de l'url de traitement de l'échec de paiement.
+     *
+     * @return string
+     */
+    public function getHandleFailedUrl(): string
+    {
+        return $this->subscription()->route('handle-failed')->getUrl([$this->getOrderKey()], true);
+    }
+
+    /**
+     * Récupération de l'url de traitement de la notification de paiement instantané.
+     *
+     * @return string
+     */
+    public function getHandleIpnUrl(): string
+    {
+        return $this->subscription()->route('handle-ipn')->getUrl([$this->getOrderKey()], true);
+    }
+
+    /**
+     * Récupération de l'url de traitement d'un paiement en attente de réglement.
+     *
+     * @return string
+     */
+    public function getHandlePendingUrl(): string
+    {
+        return $this->subscription()->route('handle-pending')->getUrl([$this->getOrderKey()], true);
+    }
+
+    /**
+     * Récupération de l'url de traitement de succès de paiement.
+     *
+     * @return string
+     */
+    public function getHandleSuccessedUrl(): string
+    {
+        return $this->subscription()->route('handle-successed')->getUrl([$this->getOrderKey()], true);
+    }
+
+    /**
      * Récupération du mail.
      *
      * @param array $attrs
@@ -248,9 +425,9 @@ class QueryOrder extends BaseQueryPost
             'subject' => sprintf(
                 __('[%s] >> Votre commande n°%d', 'theme'), get_bloginfo('blogname'), $this->getId()
             ),
-            'to'      => $this->getCustomer()->getEmail(),
+            'to'      => $this->getBilling('email'),
             'viewer'  => [
-                'override_dir' => get_template_directory() . '/views/mail/order',
+                'override_dir' => $this->subscription()->resources('/views/mail/order'),
             ],
         ], $attrs))->data($this->getInvoiceDatas());
     }
@@ -262,12 +439,9 @@ class QueryOrder extends BaseQueryPost
      */
     public function getInvoiceDatas(): array
     {
-        $cinfos = get_option('contact_infos');
-        $user = $this->getCustomer();
-
         return [
-            'billing'  => [
-                'display_name' => "{$this->getBilling('lastname')} {$this->getBilling('firstname')}",
+            'billing'      => [
+                'display_name' => "{$this->getBilling('firstname')} {$this->getBilling('lastname')} ",
                 'company'      => $this->getBilling('company'),
                 'address1'     => $this->getBilling('address1'),
                 'address2'     => $this->getBilling('address2'),
@@ -276,56 +450,28 @@ class QueryOrder extends BaseQueryPost
                 'email'        => $this->getBilling('email'),
                 'phone'        => $this->getBilling('phone'),
             ],
-            'company'      => [
-                'name'  => $cinfos['company_name'] ?? '',
-                'form'  => $cinfos['company_form'] ?? '',
-                'siren' => $cinfos['company_siren'] ?? '',
-                'siret' => $cinfos['company_siret'] ?? '',
-                'tva'   => $cinfos['company_tva'] ?? '',
-                'ape'   => $cinfos['company_ape'] ?? '',
-                'cnil'  => $cinfos['company_cnil'] ?? '',
-            ],
-            'contact'      => [
-                'address1' => $cinfos['contact_address1'] ?? '',
-                'address2' => $cinfos['contact_address2'] ?? '',
-                'postcode' => $cinfos['contact_postcode'] ?? '',
-                'city'     => $cinfos['contact_city'] ?? '',
-                'phone'    => $cinfos['contact_phone'] ?? '',
-                'fax'      => $cinfos['contact_fax'] ?? '',
-                'email'    => $cinfos['contact_email'] ?? '',
-                'website'  => $cinfos['contact_website'] ?? '',
-            ],
-            'date'     => [
-                'created' => $this->getDateTime()->format('d/m/Y'),
-                'payment' => $this->getPaymentDatetime()->format('d/m/Y'),
-            ],
-            'logo'     => '', //$this->app->img()->src('svg/logo-mono.svg'),
-            'items'    => $this->getLineItems(),
-            'order'    => [
+            'infos'        => get_option('contact_infos'),
+            'items'        => $this->getLineItems(),
+            'order'        => [
                 'id'                => $this->getId(),
+                'created_date'      => $this->getDateTime()->format('d/m/Y'),
+                'payment_date'      => $this->getPaymentDatetime()->format('d/m/Y'),
                 'payment_method'    => $this->getPaymentMethodTitle(),
-                'tax'               => $this->getTotalTax(),
-                'total'             => $this->getTotalWithTax(),
-                'total_without_tax' => $this->getTotalWithoutTax(),
+                'tax'               => $this->subscription()->functions()->displayPrice($this->getTotalTax()),
+                'taxable'           => $this->isTotalTaxable(),
+                'total'             => $this->subscription()->functions()->displayPrice($this->getTotalWithTax()),
+                'total_without_tax' => $this->subscription()->functions()->displayPrice($this->getTotalWithoutTax()),
             ],
-            'shipping' => [
+            'shipping'     => [
                 'display_name' => "{$this->getShipping('lastname')} {$this->getShipping('firstname')}",
                 'address1'     => $this->getShipping('address1'),
                 'address2'     => $this->getShipping('address2'),
                 'postcode'     => $this->getShipping('postcode'),
                 'city'         => $this->getShipping('city'),
             ],
-            'subscription'     => [
-                'id'        => $this->getSubscriptionId()
-            ],
-            'url'      => [
-                'order'        => $this->getUrl(true),
-                'pdf'          => $this->getPdfUrl(true),
-                'pdf-download' => $this->getPdfDownloadUrl(true),
-            ],
-            'user'     => [
-                'display_name' => $user->getDisplayName(),
-                'email'        => $user->getEmail(),
+            'subscription' => [
+                'id'    => $this->getSubscriptionId(),
+                'label' => $this->getSubscriptionLabel(),
             ],
         ];
     }
@@ -397,30 +543,6 @@ class QueryOrder extends BaseQueryPost
     }
 
     /**
-     * Récupération de l'url de téléchargement du PDF.
-     *
-     * @param bool $absolute
-     *
-     * @return string
-     */
-    public function getPdfDownloadUrl(bool $absolute = false): string
-    {
-        return Router::url('account.order.invoice.pdf-download', [$this->getId()], $absolute);
-    }
-
-    /**
-     * Récupération de l'url vers le PDF.
-     *
-     * @param bool $absolute
-     *
-     * @return string
-     */
-    public function getPdfUrl(bool $absolute = false): string
-    {
-        return Router::url('account.order.invoice.pdf', [$this->getId()], $absolute);
-    }
-
-    /**
      * Récupération des notes de commande.
      *
      * @return QueryCommentContract[]|array
@@ -464,13 +586,13 @@ class QueryOrder extends BaseQueryPost
     }
 
     /**
-     * Récupération de l'identifiant de l'intention de paiement Stripe.
+     * Récupération de l'instance de l'abonnement associé.
      *
-     * @return string
+     * @return QuerySubscription|null
      */
-    public function getStripePaymentIntentId(): string
+    public function getSubscription(): ?QuerySubscription
     {
-        return $this->get('stripe_payment_intent', '') ?: '';
+        return $this->subscription()->get($this->getSubscriptionId());
     }
 
     /**
@@ -481,6 +603,16 @@ class QueryOrder extends BaseQueryPost
     public function getSubscriptionId(): int
     {
         return (int)$this->get('subscription_id', 0);
+    }
+
+    /**
+     * Récupération de l'intitulé de qualification de l'abonnement associé.
+     *
+     * @return string
+     */
+    public function getSubscriptionLabel(): string
+    {
+        return (string)$this->get('subscription_label', ($s = $this->getSubscription()) ? $s->getLabel() : '');
     }
 
     /**
@@ -572,15 +704,13 @@ class QueryOrder extends BaseQueryPost
     }
 
     /**
-     * Récupération de l'url d'affichage de la commande.
+     * Vérifie si une commande nécessite une livraison.
      *
-     * @param bool $absolute
-     *
-     * @return string
+     * @return bool
      */
-    public function getUrl(bool $absolute = false): string
+    public function isNeedShipping(): bool
     {
-        return Router::url('account.order', [$this->getId()], $absolute);
+        return false;
     }
 
     /**
@@ -734,7 +864,7 @@ class QueryOrder extends BaseQueryPost
             'line_items'    => $this->getMetaSingle('_line_items', []),
             'order_key'     => $this->getOrderKey() ?: uniqid('order_'),
             'status'        => ($s = $this->getStatus())
-                ? $s->getName() : ($this->subscription()->order()->statusDefault()->getName() ?: 'order-pending'),
+                ? $s->getName() : ($this->subscription()->order()->statusDefault()->getName() ?: 'sbscodr-pending'),
         ]);
 
         return $this;
@@ -762,10 +892,12 @@ class QueryOrder extends BaseQueryPost
     public function update(): void
     {
         $postdata = [
-            'ID'          => $this->getId(),
-            'post_status' => ($status = $this->subscription()->order()->status($this->get('status')))
-                ? $status->getName() : ($this->subscription()->order()->statusDefault()->getName() ?: 'order-pending'),
-            'meta'        => [],
+            'ID'                => $this->getId(),
+            'post_status'       => ($status = $this->subscription()->order()->status($this->get('status')))
+                ? $status->getName() : ($this->subscription()->order()->statusDefault()->getName() ?: 'sbscodr-pending'),
+            'meta'              => [],
+            'post_modified'     => DateTime::now(DateTime::getGlobalTimeZone())->toDateTimeString(),
+            'post_modified_gmt' => DateTime::now('gmt')->toDateTimeString(),
         ];
 
         $postdata['post_title'] = sprintf(__('Commande n°%s', 'theme'), $this->getId());
@@ -797,7 +929,7 @@ class QueryOrder extends BaseQueryPost
     /**
      * Mise à jour du statut.
      *
-     * @param string $new_status
+     * @param string $new_status pending|processing|on-hold|completed|cancelled|refunded|failed
      *
      * @return bool
      */
@@ -814,7 +946,7 @@ class QueryOrder extends BaseQueryPost
                 $this->set('date_paid', (new DateTime())->utc('U'));
             }
 
-            if (!$this->get('date_completed') && $statusObj->getName() === 'order-completed') {
+            if (!$this->get('date_completed') && $statusObj->getName() === 'sbscodr-completed') {
                 $this->set('date_completed', (new DateTime())->utc('U'));
             }
 

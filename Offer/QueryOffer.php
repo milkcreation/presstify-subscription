@@ -168,7 +168,7 @@ class QueryOffer extends BaseQueryPost
                     );
                     break;
                 case 'custom' :
-                    $output = get_option('custom_price_display_suffix', '');
+                    $output = $this->subscription()->settings()->param('price.display_suffix', '');
                     break;
             }
         }

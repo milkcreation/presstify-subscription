@@ -5,6 +5,7 @@ namespace tiFy\Plugins\Subscription;
 use BadMethodCallException;
 use Exception;
 use tiFy\Contracts\Session\Store;
+use tiFy\Plugins\Subscription\Order\QueryOrder;
 use tiFy\Support\Proxy\Session;
 
 /**
@@ -58,8 +59,36 @@ class SubscriptionSession
             return $this->store->$name(...$arguments);
         } catch (Exception $e) {
             throw new BadMethodCallException(sprintf(
-                __('La méthode de session [%s] n\'est pas disponible.', 'tify'), $name)
+                    __('La méthode de session [%s] n\'est pas disponible.', 'tify'), $name)
             );
         }
+    }
+
+    /**
+     * Définition d'une commande en attente de paiement.
+     *
+     * @return QueryOrder|null
+     */
+    public function createOrder(): ?QueryOrder
+    {
+        if ($order = QueryOrder::insert()) {
+            $this->put('order_awaiting_payment', $order->getId());
+        }
+
+        return $order;
+    }
+
+    /**
+     * Récupération de la commande en attente de paiement.
+     *
+     * @return QueryOrder|null
+     */
+    public function getOrder(): ?QueryOrder
+    {
+        if (!$order_id = $this->get('order_awaiting_payment', 0)) {
+            return null;
+        }
+
+        return $this->subscription()->order()->get($order_id);
     }
 }

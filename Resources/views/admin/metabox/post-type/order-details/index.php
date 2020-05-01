@@ -31,14 +31,24 @@
                     </th>
                     <td>
                         <?php echo ($u = $order->getCustomer())
-                            ? sprintf('%s (#%d - %s)', $u->getDisplayName(), $u->getId(), partial('tag', [
+                            ? $u->getDisplayName() . '<br>' . sprintf('(#%d - %s)', $u->getId(), partial('tag', [
                                 'attrs'   => [
-                                    'href'  => $u->getEditUrl(),
-                                    'title' => sprintf(__('Editer l\'utilisateur %s', 'theme'), $u->getDisplayName()),
+                                    'href'  => 'mailto:' . $u->getEmail(),
+                                    'title' => sprintf(__('Envoyer un mail à %s', 'theme'), $u->getDisplayName()),
                                 ],
                                 'content' => $u->getEmail(),
                                 'tag'     => 'a',
-                            ]))
+                            ])) . '<br><br>' . partial('tag', [
+                                'attrs'   => [
+                                    'class' => 'button-secondary',
+                                    'href'  => $u->getEditUrl(),
+                                    'title' => sprintf(__('Éditer l\'utilisateur %s', 'theme'), $u->getDisplayName()),
+                                ],
+                                'content' => __('Éditer', 'theme'),
+                                'tag'     => 'a',
+                            ])
+
+
                             : '--';
                         ?>
                     </td>
@@ -51,6 +61,7 @@
                         <?php echo ($s = $order->getSubscription())
                             ? partial('tag', [
                                 'attrs'   => [
+                                    'class' => 'button-secondary',
                                     'href'  => $s->getEditUrl(),
                                     'title' => sprintf(__('Editer l\'abonnement %s', 'theme'), $s->getTitle()),
                                 ],
@@ -83,10 +94,26 @@
                 </tr>
                 <tr>
                     <th>
-                        <?php _e('4 derniers numéros de carte', 'theme'); ?>
+                        <?php _e('Premiers numéros de carte', 'theme'); ?>
                     </th>
                     <td>
-                        <?php echo ($last4 = $order->getCardLast4()) ? sprintf('... %s', $last4) : '--'; ?>
+                        <?php echo ($first = $order->getCardFirst()) ? sprintf('%s ...', $first) : '--'; ?>
+                    </td>
+                </tr>
+                <tr>
+                    <th>
+                        <?php _e('Derniers numéros de carte', 'theme'); ?>
+                    </th>
+                    <td>
+                        <?php echo ($last = $order->getCardLast()) ? sprintf('... %s', $last) : '--'; ?>
+                    </td>
+                </tr>
+                <tr>
+                    <th>
+                        <?php _e('Validité de la carte', 'theme'); ?>
+                    </th>
+                    <td>
+                        <?php echo ($valid = $order->getCardValid()) ? $valid : '--'; ?>
                     </td>
                 </tr>
                 <tr>
@@ -115,21 +142,6 @@
                         </td>
                     </tr>
                 <?php endif; ?>
-                <tr>
-                    <th>
-                        <?php _e('Session de paiement Stripe', 'theme'); ?>
-                    </th>
-                    <td>
-                        <?php echo field('text', [
-                            'attrs' => [
-                                'class' => 'widefat',
-                                $order->getStripePaymentIntentId() ? 'disabled' : null,
-                            ],
-                            'name'  => '_stripe_payment_intent',
-                            'value' => $order->getStripePaymentIntentId(),
-                        ]); ?>
-                    </td>
-                </tr>
             </table>
 
             <h3 class="Form-title"><?php printf(__('Informations de connection', 'theme'), $order->getId()); ?></h3>

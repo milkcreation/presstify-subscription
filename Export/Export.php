@@ -2,7 +2,8 @@
 
 namespace tiFy\Plugins\Subscription\Export;
 
-use tiFy\Plugins\Subscription\SubscriptionAwareTrait;
+use tiFy\Plugins\Subscription\{Export\Order\ListTableFactory, SubscriptionAwareTrait};
+use tiFy\Support\Proxy\Template;
 
 class Export
 {
@@ -23,9 +24,9 @@ class Export
     {
         if (!$this->booted) {
 
-            /* TEMPLATES * /
+            /* TEMPLATES */
             Template::set([
-                'export-order' => (new ExportOrderTemplate())->setSubscription($this->subscription)
+                'export-order' => (new ListTableFactory())->setSubscription($this->subscription)
             ]);
             /**/
 

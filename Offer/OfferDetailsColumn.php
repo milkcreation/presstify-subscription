@@ -3,6 +3,7 @@
 namespace tiFy\Plugins\Subscription\Offer;
 
 use tiFy\Column\AbstractColumnDisplayPostTypeController;
+use tiFy\Plugins\Subscription\Proxy\Subscription;
 
 class OfferDetailsColumn extends AbstractColumnDisplayPostTypeController
 {
@@ -20,7 +21,8 @@ class OfferDetailsColumn extends AbstractColumnDisplayPostTypeController
     public function content($column_name = null, $post_id = null, $null = null)
     {
         $offer = QueryOffer::create($post_id);
+        $settings = Subscription::settings();
 
-        return $this->viewer('index', compact('offer'));
+        return $this->viewer('index', compact('offer', 'settings'));
     }
 }
