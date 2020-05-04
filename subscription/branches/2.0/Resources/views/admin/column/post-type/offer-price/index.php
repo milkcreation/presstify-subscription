@@ -7,7 +7,7 @@
 ?>
 <ul class="OfferPrice">
     <li>
-        <label><?php _e('Prix de vente', 'theme'); ?> : </label>
+        <label><?php _e('Prix de vente', 'tify'); ?> : </label>
         <span>
             <big>
             <b>
@@ -20,7 +20,7 @@
     </li>
     <?php if ($offer->isTaxable()) : ?>
         <li>
-            <label><?php _e('Montant de TVA', 'theme'); ?> : </label>
+            <label><?php _e('Montant de TVA', 'tify'); ?> : </label>
             <span><?php printf('%s%%', $offer->getTax()); ?></span>
         </li>
     <?php endif; ?>

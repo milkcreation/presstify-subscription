@@ -58,13 +58,13 @@ class QueryOffer extends BaseQueryPost
         switch ($this->getDurationUnity()) {
             default :
             case 'year' :
-                return sprintf(_n('%d an', '%d ans', $length, 'theme'), $length);
+                return sprintf(_n('%d an', '%d ans', $length, 'tify'), $length);
                 break;
             case 'month' :
-                return sprintf(_n('%d mois', '%d mois', $length, 'theme'), $length);
+                return sprintf(_n('%d mois', '%d mois', $length, 'tify'), $length);
                 break;
             case 'day' :
-                return sprintf(_n('%d jour', '%d jours', $length, 'theme'), $length);
+                return sprintf(_n('%d jour', '%d jours', $length, 'tify'), $length);
                 break;
         }
     }
@@ -168,7 +168,7 @@ class QueryOffer extends BaseQueryPost
                     );
                     break;
                 case 'custom' :
-                    $output = $this->subscription()->settings()->param('price.display_suffix', '');
+                    $output = $this->subscription()->settings()->params('price.display_suffix', '');
                     break;
             }
         }
@@ -277,8 +277,8 @@ class QueryOffer extends BaseQueryPost
      */
     public function getTaxLabel(?bool $incl = null): string
     {
-        $with = __('TTC', 'theme');
-        $without = __('HT', 'theme');
+        $with = __('TTC', 'tify');
+        $without = __('HT', 'tify');
 
         if (is_null($incl)) {
             return $this->subscription()->settings()->isTaxDisplayIncl() ? $with : $without;

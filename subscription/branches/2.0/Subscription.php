@@ -6,17 +6,29 @@ use App\Wordpress\QueryUser;
 use Exception;
 use Psr\Container\ContainerInterface as Container;
 use tiFy\Contracts\{Log\Logger, Partial\FlashNotice, Routing\Route};
-use tiFy\Plugins\Subscription\{Export\Export, Gateway\Gateway, Order\Order, Offer\Offer};
+use tiFy\Plugins\Subscription\{
+    Column\SubscriptionDetailsColumn,
+    Column\SubscriptionExpirationColumn,
+    Column\SubscriptionCustomerColumn,
+    Column\UserSubscriptionColumn,
+    Export\Export,
+    Gateway\Gateway,
+    Mail\Mail,
+    Mail\OrderMail,
+    Order\Order,
+    Offer\Offer
+};
 use tiFy\Support\{ParamsBag, Str};
-use tiFy\Support\Proxy\{Log, Partial, PostType, Router, View};
+use tiFy\Support\Proxy\{Column, Form, Log, Metabox, Partial, PostType, Router, View};
 use tiFy\Wordpress\Contracts\Query\{QueryPost as QueryPostContract, QueryUser as QueryUserContract};
+use tiFy\Metabox\MetaboxDriver;
 use WP_Post, WP_Query, WP_User;
 
 /**
  * @desc Extension PresstiFy de gestion d'abonnements.
  * @author Jordy Manner <jordy@milkcreation.fr>
  * @package tiFy\Plugins\Subscription
- * @version 2.0.0
+ * @version 2.0.1
  *
  * USAGE :
  * Activation
@@ -69,10 +81,22 @@ class Subscription
     protected $container;
 
     /**
-     * Instance du controleur de traitement des requêtes de paiement.
-     * @var SubscriptionController
+     * Liste des services par défaut fournis par conteneur d'injection de dépendances.
      */
-    protected $controller;
+    protected $defaultService = [
+        'controller' => SubscriptionController::class,
+        'customer'   => SubscriptionCustomer::class,
+        'export'     => Export::class,
+        'form'       => SubscriptionOrderForm::class,
+        'functions'  => SubscriptionFunctions::class,
+        'gateway'    => Gateway::class,
+        'mail'       => Mail::class,
+        'mail.order' => OrderMail::class,
+        'offer'      => Offer::class,
+        'order'      => Order::class,
+        'settings'   => SubscriptionSettings::class,
+        'session'    => SubscriptionSession::class,
+    ];
 
     /**
      * Instance du gestionnaire de journalisation des événements.
@@ -127,8 +151,8 @@ class Subscription
                 $m = $this->config('admin_menu', []);
 
                 add_menu_page(
-                    $m['page_title'] ?? __('Gestion des abonnements', 'theme'),
-                    $m['menu_title'] ?? __('Abonnements', 'theme'),
+                    $m['page_title'] ?? __('Gestion des abonnements', 'tify'),
+                    $m['menu_title'] ?? __('Abonnements', 'tify'),
                     $m['capability'] ?? 'edit_posts',
                     $m['menu_slug'] ?? 'subscription',
                     $m['function'] ?? '__return_false',
@@ -139,8 +163,8 @@ class Subscription
                 $s = $this->config('subscription.admin_menu', []);
                 add_submenu_page(
                     $s['parent_slug'] ?? ($m['menu_slug'] ?? 'subscription'),
-                    $s['page_title'] ?? __('Liste des abonnements', 'theme'),
-                    $s['menu_title'] ?? __('Abonnements', 'theme'),
+                    $s['page_title'] ?? __('Liste des abonnements', 'tify'),
+                    $s['menu_title'] ?? __('Abonnements', 'tify'),
                     $s['capability'] ?? 'edit_posts',
                     $s['menu_slug'] ?? 'edit.php?post_type=subscription',
                     $s['function'] ?? '',
@@ -170,6 +194,12 @@ class Subscription
             });
             /**/
 
+            /* Suppression de la metaboxe d'enregistrement native */
+            add_action('add_meta_boxes', function () {
+                remove_meta_box('submitdiv', 'subscription', 'side');
+            });
+            /**/
+
             /* INITIALISATION */
             $this->settings()->boot();
             $this->offer()->boot();
@@ -182,8 +212,8 @@ class Subscription
             /* TYPES DE POST */
             // - Déclaration des abonnements.
             PostType::register('subscription', array_merge([
-                'plural'              => __('Abonnements', 'theme'),
-                'singular'            => __('Abonnement', 'theme'),
+                'plural'              => __('Abonnements', 'tify'),
+                'singular'            => __('Abonnement', 'tify'),
                 'publicly_queryable'  => false,
                 'exclude_from_search' => true,
                 'hierarchical'        => false,
@@ -196,44 +226,112 @@ class Subscription
             ], $this->config('subscription.post_type', [])));
             /**/
 
+            /* COLONNES */
+            // -- Page liste des abonnements.
+            Column::stack('subscription@post_type', [
+                'subscription-expiration' => [
+                    'content'  => SubscriptionExpirationColumn::class,
+                    'position' => 1,
+                ],
+                'subscription-user'       => [
+                    'content'  => SubscriptionCustomerColumn::class,
+                    'position' => 2.1,
+                ],
+                'subscription-details'    => [
+                    'content'  => SubscriptionDetailsColumn::class,
+                    'position' => 2.2,
+                    'viewer'   => [
+                        'directory' => $this->resources('/views/admin/column/post-type/subscription-details'),
+                    ],
+                ],
+            ]);
+            // - Page liste des utilisateurs.
+            Column::add('@user', 'user-subscription', [
+                'content'  => UserSubscriptionColumn::class,
+                'position' => 4,
+                'viewer'   => [
+                    'directory' => $this->resources('/views/admin/column/user/subscription'),
+                ],
+            ]);
+            /**/
+
+            /* METABOXES */
+            PostType::meta()
+                ->registerSingle('subscription', '_product_label')
+                ->registerSingle('subscription', '_renewable_days')
+                ->registerSingle('subscription', '_renew_notification');
+
+            Metabox::add('subscription-actions', [
+                'title'  => __('Actions sur l\'abonnement', 'tify'),
+                'viewer' => [
+                    'directory' => $this->resources('/views/admin/metabox/post-type/subscription-actions'),
+                ],
+            ])
+                ->setScreen('subscription@post_type')->setContext('side')
+                ->setHandler(function (MetaboxDriver $box, WP_Post $wp_post) {
+                    $box->set([
+                        'subscription' => $this->get($wp_post),
+                    ]);
+                });
+
+            Metabox::add('subscription-details', [
+                'params' => [
+                    'device'    => $this->functions()->getCurrencySymbol(),
+                    'taxable'   => $this->settings()->isTaxEnabled(),
+                    'tax_label' => $this->settings()->isPricesIncludeTax()
+                        ? __('TTC', 'tify') : __('HT', 'tify'),
+                ],
+                'title'  => __('Détails de l\'abonnement', 'tify'),
+                'viewer' => [
+                    'directory' => $this->resources('/views/admin/metabox/post-type/subscription-details'),
+                ],
+            ])
+                ->setScreen('subscription@post_type')->setContext('tab')
+                ->setHandler(function (MetaboxDriver $box, WP_Post $wp_post) {
+                    $box->set([
+                        'subscription' => $this->get($wp_post),
+                    ]);
+                });
+            /**/
+
             /* ROUTAGE */
-            // - Définition du routage de traitement des requêtes de paiement.
-            $controller = $this->config('routing.controller', null);
-            if (is_string($controller) && class_exists($controller)) {
-                $controller = new $controller();
-            }
-
-            $this->controller = $controller instanceof SubscriptionController
-                ? $controller : new SubscriptionController();
-
-            $this->controller->setSubscription($this);
-
             $pfx = 'subscription';
             $endpoints = array_merge([
                 'handle-failed'    => md5("{$pfx}/failed"),
                 'handle-cancelled' => md5("{$pfx}/cancelled"),
                 'handle-ipn'       => md5("{$pfx}/ipn"),
-                'handle-pending'   => md5("{$pfx}/pending"),
+                'handle-on-hold'   => md5("{$pfx}/on-hold"),
                 'handle-successed' => md5("{$pfx}/successed"),
+                'order-form'       => md5("{$pfx}/order-form"),
+                'order-renew'      => md5("{$pfx}/order-renew"),
                 'payment-error'    => md5("{$pfx}/payment-error"),
                 'payment-form'     => md5("{$pfx}/payment-form"),
-                'payment-success'  => md5("{$pfx}/thank-you"),
-            ], $this->config('routing.endpoints', []));
+                'payment-success'  => md5("{$pfx}/payment-success"),
+            ], $this->config('endpoints', []));
 
-            array_walk($endpoints, function (&$endpoint) {
-                $regex = '/\{order_key.*?\}/';
+            array_walk($endpoints, function (&$endpoint, $key) {
+                if (!in_array($key, ['order-form', 'order-renew'])) {
+                    $regex = '/\{order_key.*?\}/';
 
-                if (!preg_match($regex, $endpoint)) {
-                    $endpoint = rtrim($endpoint, '/') . '/{order_key}';
+                    if (!preg_match($regex, $endpoint)) {
+                        $endpoint = rtrim($endpoint, '/') . '/{order_key}';
+                    }
                 }
             });
 
             foreach ($endpoints as $name => $endpoint) {
-                $this->route[$name] = Router::get($endpoint, [$this->controller, Str::camel($name)]);
-                $this->route["{$name}-post"] = Router::post($endpoint, [$this->controller, Str::camel($name)]);
+                $this->route[$name] = Router::get($endpoint, [$this->controller(), Str::camel($name)]);
+                $this->route["{$name}.post"] = Router::post($endpoint, [$this->controller(), Str::camel($name)]);
             }
+            /**/
 
+            /* FORMULAIRE */
+            Form::set(md5('subscription.orderForm'), $this->form());
+            /**/
+
+            /* VUES */
             View::addFolder('subscription', $this->resources('/views/checkout'));
+            /**/
 
             $this->booted = true;
         }
@@ -254,7 +352,7 @@ class Subscription
             return self::$instance;
         }
 
-        throw new Exception(__('Impossible de récupérer l\'instance du gestionnaire d\'abonnements.', 'theme'));
+        throw new Exception(__('Impossible de récupérer l\'instance du gestionnaire d\'abonnements.', 'tify'));
     }
 
     /**
@@ -287,7 +385,20 @@ class Subscription
      */
     public function controller(): SubscriptionController
     {
-        return $this->controller;
+        return $this->resolve('controller');
+    }
+
+    /**
+     * Récupération de l'instance d'un client.
+     *
+     * @param string|int|QueryUserContract|null $id Identification du client email|user_id|query
+     *
+     * @return SubscriptionCustomer|null
+     */
+    public function customer($id = null): ?SubscriptionCustomer
+    {
+        /** @var SubscriptionCustomer $customer */
+        return  ($customer = $this->resolve('customer')) ? $customer::create($id) : null;
     }
 
     /**
@@ -310,6 +421,16 @@ class Subscription
     public function fetch($query = null): array
     {
         return QuerySubscription::fetch($query);
+    }
+
+    /**
+     * Instance du formulaire d'abonnement.
+     *
+     * @return SubscriptionOrderForm|null
+     */
+    public function form(): SubscriptionOrderForm
+    {
+        return $this->resolve('form');
     }
 
     /**
@@ -366,6 +487,16 @@ class Subscription
         }
 
         return $this->log;
+    }
+
+    /**
+     * Instance du gestionnaire de mails.
+     *
+     * @return Mail|null
+     */
+    public function mail(): ?Mail
+    {
+        return $this->resolve('mail');
     }
 
     /**
@@ -458,6 +589,18 @@ class Subscription
     }
 
     /**
+     * Récupération d'un service.
+     *
+     * @param string $name
+     *
+     * @return callable|object|string|null
+     */
+    public function service(string $name)
+    {
+        return $this->config("service.{$name}", $this->defaultService[$name] ?? null);
+    }
+
+    /**
      * Instance de la session.
      *
      * @return SubscriptionSession
@@ -503,17 +646,5 @@ class Subscription
         $this->container = $container;
 
         return $this;
-    }
-
-    /**
-     * Instance de l'utilisateur courant ou de l'utilisateur associé à un identifiant de qualification.
-     *
-     * @param string|int|WP_User|null $id
-     *
-     * @return QueryUser
-     */
-    public function user($id = null): ?QueryUserContract
-    {
-        return QueryUser::create($id);
     }
 }

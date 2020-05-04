@@ -9,7 +9,7 @@
             <tr class="rowBodyContent-section rowBodyContent-section--header">
                 <td>
                     <h1 class="Title--1">
-                        <?php printf(__('Facture de la commande n°%d', 'theme'), $this->get('order.id')); ?>
+                        <?php printf(__('Facture de la commande n°%d', 'tify'), $this->get('order.id')); ?>
                     </h1>
                 </td>
             </tr>
@@ -17,11 +17,11 @@
             <tr class="rowBodyContent-section rowBodyContent-section--body">
                 <td>
                     <p>
-                        <?php printf(__('Bonjour, %s', 'theme'), $this->get('billing.display_name')); ?>
+                        <?php printf(__('Bonjour, %s', 'tify'), $this->get('billing.display_name')); ?>
                     </p>
                     <p>
                         <?php printf(
-                            __('Voici le détail de votre commande passée le %s', 'theme'),
+                            __('Voici le détail de votre commande passée le %s', 'tify'),
                             $this->get('order.payment_date')
                         ); ?> :
                     </p>
@@ -30,24 +30,24 @@
             </tr>
 
             <tr class="rowBodyContent-section rowBodyContent-section--body">
-                <td>
+                <td style="padding-bottom: 30px;">
                     <table class="OrderTable" role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
                         <thead>
                         <tr>
-                            <th style="text-align:left;">
-                                <?php _e('Réf.', 'theme'); ?>
+                            <th style="text-align:left;font-weight:bold;">
+                                <?php _e('Réf.', 'tify'); ?>
                             </th>
-                            <th style="text-align:center;">
-                                <?php _e('Désign.', 'theme'); ?>
+                            <th style="text-align:center;font-weight:bold;">
+                                <?php _e('Désign.', 'tify'); ?>
                             </th>
-                            <th style="text-align:center;">
-                                <?php _e('Qté.', 'theme'); ?>
+                            <th style="text-align:center;font-weight:bold;">
+                                <?php _e('Qté.', 'tify'); ?>
                             </th>
-                            <th style="text-align:center;">
-                                <?php _e('P.U HT', 'theme'); ?>
+                            <th style="text-align:center;font-weight:bold;">
+                                <?php _e('P.U HT', 'tify'); ?>
                             </th>
-                            <th style="text-align:right;">
-                                <?php _e('P.U Net', 'theme'); ?>
+                            <th style="text-align:right;font-weight:bold;">
+                                <?php _e('P.U Net', 'tify'); ?>
                             </th>
                         </tr>
                         </thead>
@@ -77,26 +77,42 @@
             </tr>
 
             <tr class="rowBodyContent-section rowBodyContent-section--body">
-                <td style="padding:20px 0;">
+                <td style="padding-bottom: 30px;font-size:1.4em;">
                     <table class="TotalTable" align="right" role="presentation" cellspacing="0" cellpadding="0"
                            border="0" style="width:30%;">
                         <?php if ($this->get('order.taxable')) : ?>
                             <tr>
-                                <th style="text-align:left;"><?php _e('Total HT', 'theme'); ?></th>
-                                <td style="text-align:right;"><?php echo $this->get('order.total_without_tax'); ?></td>
+                                <th style="text-align:left;font-weight:bold;">
+                                    <?php _e('Total HT', 'tify'); ?>
+                                </th>
+                                <td style="text-align:right;">
+                                    <?php echo $this->get('order.total_without_tax'); ?>
+                                </td>
                             </tr>
                             <tr>
-                                <th style="text-align:left;"><?php _e('Total TVA', 'theme'); ?></th>
-                                <td style="text-align:right;"><?php echo $this->get('order.tax'); ?></td>
+                                <th style="text-align:left;font-weight:bold;">
+                                    <?php _e('Total TVA', 'tify'); ?>
+                                </th>
+                                <td style="text-align:right;">
+                                    <?php echo $this->get('order.tax'); ?>
+                                </td>
                             </tr>
                             <tr>
-                                <th style="text-align:left;"><?php _e('Total TTC', 'theme'); ?></th>
-                                <td style="text-align:right;"><?php echo $this->get('order.total'); ?></td>
+                                <th style="text-align:left;font-weight:bold;">
+                                    <?php _e('Total TTC', 'tify'); ?>
+                                </th>
+                                <td style="text-align:right;">
+                                    <?php echo $this->get('order.total'); ?>
+                                </td>
                             </tr>
                         <?php else : ?>
                             <tr>
-                                <th style="text-align:left;"><?php _e('Total', 'theme'); ?></th>
-                                <td style="text-align:right;"><?php echo $this->get('order.total'); ?></td>
+                                <th style="text-align:left;font-weight:bold;">
+                                    <?php _e('Total', 'tify'); ?>
+                                </th>
+                                <td style="text-align:right;">
+                                    <?php echo $this->get('order.total'); ?>
+                                </td>
                             </tr>
                         <?php endif; ?>
                     </table>
@@ -108,7 +124,7 @@
                     <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
                         <tr>
                             <td style="vertical-align: top;">
-                                <h2><?php _e('Facturation', 'theme'); ?></h2>
+                                <h2><?php _e('Facturation', 'tify'); ?></h2>
                                 <?php if ($b_company = $this->get('billing.company')) : ?>
                                     <div><?php echo $b_company; ?></div>
                                 <?php endif; ?>
@@ -137,7 +153,7 @@
                                 <?php endif; ?>
                             </td>
                             <td style="vertical-align: top;">
-                                <h2><?php _e('Livraison', 'theme'); ?></h2>
+                                <h2><?php _e('Livraison', 'tify'); ?></h2>
                                 <?php if ($b_company = $this->get('shipping.company')) : ?>
                                     <div><?php echo $b_company; ?></div>
                                 <?php endif; ?>
@@ -180,9 +196,9 @@
                                         'clicktracking' => 'off',
                                         'href'          => $this->get('url.pdf'),
                                         'target'        => '_blank',
-                                        'title'         => __('Afficher la version PDF de la facture', 'theme'),
+                                        'title'         => __('Afficher la version PDF de la facture', 'tify'),
                                     ],
-                                    'content' => __('Afficher la version PDF', 'theme'),
+                                    'content' => __('Afficher la version PDF', 'tify'),
                                     'tag'     => 'a',
                                 ]); ?>
                             </td>
@@ -197,7 +213,7 @@
                         <i><?php _e(
                                 'L\'accès au téléchargement PDF et à la version en ligne nécessite d\'être connecté ' .
                                 'à votre compte.',
-                                'theme'
+                                'tify'
                             ); ?></i>
                     </p>
                 </td>

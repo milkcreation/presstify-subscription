@@ -1,13 +1,13 @@
 <?php declare(strict_types=1);
 
-namespace tiFy\Plugins\Subscription\Order;
+namespace tiFy\Plugins\Subscription\Invoice;
 
 use tiFy\Plugins\Subscription\SubscriptionAwareTrait;
 use tiFy\Contracts\Partial\Modal;
 use tiFy\Partial\PartialDriver;
 use tiFy\Support\Proxy\Partial;
 
-class OrderInvoice extends PartialDriver
+class InvoicePartial extends PartialDriver
 {
     use SubscriptionAwareTrait;
 
@@ -26,7 +26,7 @@ class OrderInvoice extends PartialDriver
             'attrs'   => [
                 'class' => 'Button--1',
             ],
-            'content' => __('Facture', 'theme'),
+            'content' => __('Facture', 'tify'),
             'order'   => 0,
         ];
     }
@@ -49,20 +49,17 @@ class OrderInvoice extends PartialDriver
                     'class' => '%s OrderInvoice',
                 ],
                 'content' => [
-                    'body'   => '', //$this->app->img('svg/title/invoice.svg', ['class' => 'InvoiceModal-waitingIcon']),
+                    'body'   => '',
                     'footer' => Partial::get('tag', [
                         'attrs'   => [
-                            'class' => 'Button--1',
-                            'href'  => route('account.order.invoice.pdf-download', [$order], false),
+                            'href' => route('account.order.invoice.pdf-download', [$order], false),
                         ],
-                        'content' => __('Télécharger', 'theme'),
+                        'content' => __('Télécharger', 'tify'),
                         'tag'     => 'a',
                     ])->render(),
-                    'header' => '<h3 class="modal-title Title--1">' . Partial::get('page-title', [
-                        'icon'  => '',//$this->app->img('svg/title/invoice.svg'),
-                        'label' => sprintf(__('Facture | Commande n°%d', 'theme'), $order),
-                    ])->render() . '</h3>'
-                    //'<h3 class="modal-title Title--1">' . sprintf(__('Facture | Commande n°%d', 'theme'), $order) . '</h3>',
+                    'header' => '<h3 class="modal-title">' .
+                            sprintf(__('Facture | Commande n°%d', 'tify'), $order) .
+                        '</h3>',
                 ],
                 'options' => [
                     'show' => false,

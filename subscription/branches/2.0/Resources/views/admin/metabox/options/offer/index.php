@@ -4,23 +4,23 @@
  * @var tiFy\Plugins\Subscription\SubscriptionSettings $settings
  */
 ?>
-<h3 class="Form-title"><?php _e('Gestion de l\'engagement', 'theme'); ?></h3>
+<h3 class="Form-title"><?php _e('Gestion de l\'engagement', 'tify'); ?></h3>
 <table class="Form-table">
     <tr>
-        <th><?php _e('Activer', 'theme'); ?></th>
+        <th><?php _e('Activer', 'tify'); ?></th>
         <td>
             <?php echo field('toggle-switch', [
-                'name'  => $this->name() . '[duration][enabled]',
-                'value' => $settings->isOfferDurationEnabled() ? 'on' : 'off',
+                'name'  => $this->name() . '[limitation][enabled]',
+                'value' => $settings->isOfferLimitationEnabled() ? 'on' : 'off',
             ]); ?>
         </td>
     </tr>
 </table>
 
-<h3 class="Form-title"><?php _e('Gestion du ré-engagement', 'theme'); ?></h3>
+<h3 class="Form-title"><?php _e('Gestion du ré-engagement', 'tify'); ?></h3>
 <table class="Form-table">
     <tr>
-        <th><?php _e('Activer', 'theme'); ?></th>
+        <th><?php _e('Activer', 'tify'); ?></th>
         <td>
             <?php echo field('toggle-switch', [
                 'name'  => $this->name() . '[renew][enabled]',

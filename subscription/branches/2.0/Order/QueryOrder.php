@@ -2,7 +2,6 @@
 
 namespace tiFy\Plugins\Subscription\Order;
 
-use App\Wordpress\QueryUser;
 use Exception;
 use Illuminate\Support\Collection;
 use tiFy\Contracts\Mail\Mail as MailContract;
@@ -11,14 +10,13 @@ use tiFy\Plugins\Subscription\{
     Contracts\PaymentGateway,
     SubscriptionAwareTrait
 };
-use tiFy\Plugins\Subscription\QuerySubscription;
+use tiFy\Plugins\Subscription\{QuerySubscription, SubscriptionCustomer};
 use tiFy\Wordpress\Contracts\Query\{
     QueryComment as QueryCommentContract,
     QueryPost as QueryPostContract,
-    QueryUser as QueryUserContract
 };
 use tiFy\Wordpress\Query\QueryPost as BaseQueryPost;
-use tiFy\Support\{DateTime, Proxy\Mail};
+use tiFy\Support\DateTime;
 use WP_Post, WP_Query;
 
 class QueryOrder extends BaseQueryPost
@@ -32,7 +30,7 @@ class QueryOrder extends BaseQueryPost
 
     /**
      * Instance du client associé à la commande.
-     * @var QueryUser|false|null
+     * @var SubscriptionCustomer|null
      */
     protected $customer;
 
@@ -52,6 +50,7 @@ class QueryOrder extends BaseQueryPost
         'card_valid'           => '_card_valid',
         'created_via'          => '_created_via',
         'currency'             => '_order_currency',
+        'customer_email'       => '_customer_email',
         'customer_id'          => '_customer_user',
         'customer_ip_address'  => '_customer_ip_address',
         'customer_user_agent'  => '_customer_user_agent',
@@ -224,17 +223,19 @@ class QueryOrder extends BaseQueryPost
             throw new Exception('Subscription Uncreated');
         } else {
             $subscr->set(array_merge([
+                'customer_email'     => $this->getBilling('email'),
+                'customer_id'        => $this->getCustomerId(),
                 'duration_length'    => $line->getDurationLength(),
                 'duration_unity'     => $line->getDurationUnity(),
+                'limited'            => $this->subscription()->settings()->isOfferLimitationEnabled() ? 'on' : 'off',
                 'offer_id'           => $line->getOfferId(),
                 'offer_label'        => $line->getLabel(),
                 'order_id'           => $this->getId(),
+                'renewable'          => $this->subscription()->settings()->isOfferRenewEnabled() ? 'on' : 'off',
                 'renewable_days'     => $line->getRenewableDays(),
                 'renew_notification' => $line->isRenewNotify() ? 'on' : 'off',
-                'user_id'            => $this->getCustomerId(),
                 //'start_date'         => $line->calcStartDate()->format('Y-m-d H:i:s'),
                 //'end_date'           => $line->calcEndDate()->format('Y-m-d H:i:s'),
-                //'imported'           => false
             ], $args))->update();
 
             $this->set('subscription_id', $subscr->getId())->update();
@@ -321,15 +322,26 @@ class QueryOrder extends BaseQueryPost
     /**
      * Récupération de l'utilisateur associé à la commande.
      *
-     * @return QueryUser
+     * @return SubscriptionCustomer
      */
-    public function getCustomer(): ?QueryUserContract
+    public function getCustomer(): ?SubscriptionCustomer
     {
         if (is_null($this->customer)) {
-            $this->customer = ($id = $this->getCustomerId()) ? QueryUser::createFromId($id) : false;
+            $this->customer = ($id = $this->getCustomerId())
+                ? $this->subscription()->customer($id) : $this->subscription()->customer($this->getCustomerEmail());
         }
 
         return $this->customer ?: null;
+    }
+
+    /**
+     * Récupération de l'utilisateur associé à la commande.
+     *
+     * @return string
+     */
+    public function getCustomerEmail(): string
+    {
+        return (string)$this->get('customer_email') ? : ($this->getBilling('email') ?: '');
     }
 
     /**
@@ -397,9 +409,9 @@ class QueryOrder extends BaseQueryPost
      *
      * @return string
      */
-    public function getHandlePendingUrl(): string
+    public function getHandleOnHoldUrl(): string
     {
-        return $this->subscription()->route('handle-pending')->getUrl([$this->getOrderKey()], true);
+        return $this->subscription()->route('handle-on-hold')->getUrl([$this->getOrderKey()], true);
     }
 
     /**
@@ -415,21 +427,13 @@ class QueryOrder extends BaseQueryPost
     /**
      * Récupération du mail.
      *
-     * @param array $attrs
+     * @param array $params
      *
      * @return MailContract
      */
-    public function getMail(array $attrs = []): MailContract
+    public function getMail(array $params = []): MailContract
     {
-        return Mail::create(array_merge([
-            'subject' => sprintf(
-                __('[%s] >> Votre commande n°%d', 'theme'), get_bloginfo('blogname'), $this->getId()
-            ),
-            'to'      => $this->getBilling('email'),
-            'viewer'  => [
-                'override_dir' => $this->subscription()->resources('/views/mail/order'),
-            ],
-        ], $attrs))->data($this->getInvoiceDatas());
+        return $this->subscription()->mail()->order($this)->setParams($params);
     }
 
     /**
@@ -450,7 +454,6 @@ class QueryOrder extends BaseQueryPost
                 'email'        => $this->getBilling('email'),
                 'phone'        => $this->getBilling('phone'),
             ],
-            'infos'        => get_option('contact_infos'),
             'items'        => $this->getLineItems(),
             'order'        => [
                 'id'                => $this->getId(),
@@ -811,7 +814,6 @@ class QueryOrder extends BaseQueryPost
             'city',
             'phone',
             'email',
-            'same',
         ];
         foreach ($keys as $key) {
             $this->mapMeta("billing.{$key}", "_billing_{$key}");
@@ -900,7 +902,7 @@ class QueryOrder extends BaseQueryPost
             'post_modified_gmt' => DateTime::now('gmt')->toDateTimeString(),
         ];
 
-        $postdata['post_title'] = sprintf(__('Commande n°%s', 'theme'), $this->getId());
+        $postdata['post_title'] = sprintf(__('Commande n°%s', 'tify'), $this->getId());
         if ($date = $this->getDate()) {
             $postdata['post_title'] .= ' &ndash; ' . date_i18n('j F Y @ H:i A', strtotime($date));
         }

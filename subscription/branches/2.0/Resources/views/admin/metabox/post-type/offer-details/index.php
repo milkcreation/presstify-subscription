@@ -6,10 +6,10 @@
  * @var tiFy\Plugins\Subscription\SubscriptionSettings $settings
  */
 ?>
-<h3 class="Form-title"><?php _e('Identification', 'theme'); ?></h3>
+<h3 class="Form-title"><?php _e('Identification', 'tify'); ?></h3>
 <table class="Form-table">
     <tr>
-        <th><?php _e('Intitulé', 'theme'); ?></th>
+        <th><?php _e('Intitulé', 'tify'); ?></th>
         <td>
             <?php echo field('text', [
                 'attrs' => [
@@ -21,7 +21,7 @@
         </td>
     </tr>
     <tr>
-        <th><?php _e('Unité de gestion de stock (EAN13, Réf ...)', 'theme'); ?></th>
+        <th><?php _e('Unité de gestion de stock (EAN13, Réf ...)', 'tify'); ?></th>
         <td>
             <?php echo field('text', [
                 'attrs' => [
@@ -34,10 +34,10 @@
     </tr>
 </table>
 
-<h3 class="Form-title"><?php _e('Tarifs', 'theme'); ?></h3>
+<h3 class="Form-title"><?php _e('Tarifs', 'tify'); ?></h3>
 <table class="Form-table">
     <tr>
-        <th><?php printf(__('Prix (%s)', 'theme'), $this->params('tax_label')); ?></th>
+        <th><?php printf(__('Prix (%s)', 'tify'), $this->params('tax_label')); ?></th>
         <td>
             <?php printf ('%s %s', field('number', [
                 'attrs' => [
@@ -50,7 +50,7 @@
     </tr>
     <?php if ($this->params('price.taxable')) : ?>
     <tr>
-        <th><?php _e('Montant de TVA', 'theme'); ?></th>
+        <th><?php _e('Montant de TVA', 'tify'); ?></th>
         <td>
             <?php echo field('number', [
                 'attrs' => [
@@ -66,11 +66,11 @@
     <?php endif; ?>
 </table>
 
-<?php if ($settings->isOfferDurationEnabled()) : ?>
-<h3 class="Form-title"><?php _e('Engagement', 'theme'); ?></h3>
+<?php if ($settings->isOfferLimitationEnabled()) : ?>
+<h3 class="Form-title"><?php _e('Engagement', 'tify'); ?></h3>
 <table class="Form-table">
     <tr>
-        <th><?php _e('Durée de l\'abonnement', 'theme'); ?></th>
+        <th><?php _e('Durée de l\'abonnement', 'tify'); ?></th>
         <td>
             <?php echo field('number', [
                 'attrs' => [
@@ -81,9 +81,9 @@
             ]); ?>
             <?php echo field('select-js', [
                 'choices' => [
-                    'year'  => __('Année(s)', 'theme'),
-                    'month' => __('Mois', 'theme'),
-                    'day'   => __('Jour(s)', 'theme'),
+                    'year'  => __('Année(s)', 'tify'),
+                    'month' => __('Mois', 'tify'),
+                    'day'   => __('Jour(s)', 'tify'),
                 ],
                 'name'    => '_duration_unity',
                 'value' => $offer->getDurationUnity()
@@ -94,12 +94,12 @@
 <?php endif; ?>
 
 <?php if ($settings->isOfferRenewEnabled()) : ?>
-<h3 class="Form-title"><?php _e('Ré-engagement', 'theme'); ?></h3>
+<h3 class="Form-title"><?php _e('Ré-engagement', 'tify'); ?></h3>
 <table class="Form-table">
     <tr>
-        <th><?php _e('Possible à partir de', 'theme'); ?></th>
+        <th><?php _e('Possible à partir de', 'tify'); ?></th>
         <td>
-            <?php printf(__('%s jours avant la fin de l\'abonnement en cours.', 'theme'), field('number', [
+            <?php printf(__('%s jours avant la fin de l\'abonnement en cours.', 'tify'), field('number', [
                 'attrs' => [
                      'min' => 0,
                 ],
@@ -109,7 +109,7 @@
         </td>
     </tr>
     <tr>
-        <th><?php _e('Envoyer une notification par mail à l\'abonné', 'theme'); ?></th>
+        <th><?php _e('Envoyer une notification par mail à l\'abonné', 'tify'); ?></th>
         <td>
             <?php echo field('toggle-switch', [
                 'name'  => '_renew_notification',

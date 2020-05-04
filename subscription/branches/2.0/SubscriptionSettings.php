@@ -20,7 +20,7 @@ class SubscriptionSettings
      * Instance du gestionnaire de paramètres.
      * @var ParamsBag
      */
-    protected $param;
+    protected $params;
 
     /**
      * Initialisation.
@@ -33,7 +33,7 @@ class SubscriptionSettings
             /* OPTIONS */
             $optionPage = Option::registerPage('subscription-settings', [
                 'admin_menu' => [
-                    'menu_title'  => __('Réglages', 'theme'),
+                    'menu_title'  => __('Réglages', 'tify'),
                     'parent_slug' => 'subscription',
                     'position'    => 4,
                 ],
@@ -45,7 +45,7 @@ class SubscriptionSettings
             ]);
             /**/
 
-            $this->param([
+            $this->params([
                 'price' => array_merge(
                     $this->subscription()->config('settings.price', []),
                     get_option('subscription_price') ?: []
@@ -61,7 +61,7 @@ class SubscriptionSettings
             // -- Tarification
             Metabox::add('subscription-price', [
                 'name'   => 'subscription_price',
-                'title'  => __('Tarification', 'theme'),
+                'title'  => __('Tarification', 'tify'),
                 'viewer' => [
                     'directory' => $path . '/price',
                 ],
@@ -73,7 +73,7 @@ class SubscriptionSettings
             // -- Offres
             Metabox::add('subscription-offer', [
                 'name'   => 'subscription_offer',
-                'title'  => __('Offres', 'theme'),
+                'title'  => __('Offres', 'tify'),
                 'viewer' => [
                     'directory' => $path . '/offer',
                 ],
@@ -81,21 +81,6 @@ class SubscriptionSettings
                 ->setHandler(function ($box) {
                     $box->set('settings', $this);
                 });
-
-            /*'subscription-desc'   => [
-                'title'  => __('Présentation des abonnements', 'theme'),
-                'name'   => 'subscription_desc',
-                'viewer' => [
-                    'directory' => $path . '/subscription-desc',
-                ],
-            ],
-            'subscription-banner'   => [
-                'title'  => __('Bannière d\'inscription', 'theme'),
-                'name'   => 'subscription_banner',
-                'viewer' => [
-                    'directory' => $path . '/subscription-banner',
-                ],
-            ]*/
             /**/
 
             $this->booted = true;
@@ -111,7 +96,7 @@ class SubscriptionSettings
      */
     public function getCurrency(): string
     {
-        return (string)$this->param('price.currency', 'EUR');
+        return (string)$this->params('price.currency', 'EUR');
     }
 
     /**
@@ -121,7 +106,7 @@ class SubscriptionSettings
      */
     public function getCurrencyPos(): string
     {
-        return (string)$this->param('price.currency_pos', 'right');
+        return (string)$this->params('price.currency_pos', 'right');
     }
 
     /**
@@ -131,7 +116,7 @@ class SubscriptionSettings
      */
     public function getPriceDecimals(): int
     {
-        return (int)$this->param('price.num_decimals', 2);
+        return (int)$this->params('price.num_decimals', 2);
     }
 
     /**
@@ -141,7 +126,7 @@ class SubscriptionSettings
      */
     public function getPriceDecimalSeparator(): string
     {
-        return ($separator = $this->param('price.decimal_sep')) ? stripslashes($separator) : '.';
+        return ($separator = $this->params('price.decimal_sep')) ? stripslashes($separator) : '.';
     }
 
     /**
@@ -177,7 +162,7 @@ class SubscriptionSettings
      */
     public function getPriceDisplaySuffix(): string
     {
-        return (string)$this->param('price.display_suffix', '');
+        return (string)$this->params('price.display_suffix', '');
     }
 
     /**
@@ -187,7 +172,7 @@ class SubscriptionSettings
      */
     public function getPriceThousandSeparator(): ?string
     {
-        return stripslashes($this->param('price.thousand_sep', ''));
+        return stripslashes($this->params('price.thousand_sep', ''));
     }
 
     /**
@@ -197,7 +182,7 @@ class SubscriptionSettings
      */
     public function getTaxDisplay(): string
     {
-        return $this->param('price.tax_display', 'incl') === 'excl' ? 'excl' : 'incl';
+        return $this->params('price.tax_display', 'incl') === 'excl' ? 'excl' : 'incl';
     }
 
     /**
@@ -205,9 +190,9 @@ class SubscriptionSettings
      *
      * @return bool
      */
-    public function isOfferDurationEnabled(): bool
+    public function isOfferLimitationEnabled(): bool
     {
-        return filter_var($this->param('offer.duration.enabled', 'on'), FILTER_VALIDATE_BOOLEAN);
+        return filter_var($this->params('offer.limitation.enabled', 'on'), FILTER_VALIDATE_BOOLEAN);
     }
 
     /**
@@ -217,7 +202,7 @@ class SubscriptionSettings
      */
     public function isOfferRenewEnabled(): bool
     {
-        return filter_var($this->param('offer.renew.enabled', 'on'), FILTER_VALIDATE_BOOLEAN);
+        return filter_var($this->params('offer.renew.enabled', 'on'), FILTER_VALIDATE_BOOLEAN);
     }
 
     /**
@@ -227,7 +212,7 @@ class SubscriptionSettings
      */
     public function isPricesIncludeTax()
     {
-        return filter_var($this->param('price.include_tax'), FILTER_VALIDATE_BOOLEAN);
+        return filter_var($this->params('price.include_tax'), FILTER_VALIDATE_BOOLEAN);
     }
 
     /**
@@ -247,7 +232,7 @@ class SubscriptionSettings
      */
     public function isTaxEnabled(): bool
     {
-        return filter_var($this->param('price.calc_taxes', 'on'), FILTER_VALIDATE_BOOLEAN);
+        return filter_var($this->params('price.calc_taxes', 'on'), FILTER_VALIDATE_BOOLEAN);
     }
 
     /**
@@ -258,18 +243,18 @@ class SubscriptionSettings
      *
      * @return mixed|ParamsBag
      */
-    public function param($key = null, $default = null)
+    public function params($key = null, $default = null)
     {
-        if (!$this->param instanceof ParamsBag) {
-            $this->param = new ParamsBag();
+        if (!$this->params instanceof ParamsBag) {
+            $this->params = new ParamsBag();
         }
 
         if (is_string($key)) {
-            return $this->param->get($key, $default);
+            return $this->params->get($key, $default);
         } elseif (is_array($key)) {
-            return $this->param->set($key);
+            return $this->params->set($key);
         } else {
-            return $this->param;
+            return $this->params;
         }
     }
 }

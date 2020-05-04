@@ -2,8 +2,9 @@
 
 namespace tiFy\Plugins\Subscription;
 
-use tiFy\Wordpress\Contracts\Query\{QueryPost as QueryPostContract, QueryUser as QueryUserContract};
-use tiFy\Wordpress\Query\{QueryPost as BaseQueryPost, QueryUser};
+use tiFy\Plugins\Subscription\Offer\QueryOffer;
+use tiFy\Wordpress\Contracts\Query\QueryPost as QueryPostContract;
+use tiFy\Wordpress\Query\QueryPost as BaseQueryPost;
 use tiFy\Support\DateTime;
 use WP_Post;
 
@@ -21,6 +22,8 @@ class QuerySubscription extends BaseQueryPost
      * @var array
      */
     protected $metasMap = [
+        'customer_email'     => '_customer_email',
+        'customer_id'        => '_customer_id',
         'duration_length'    => '_duration_length',
         'duration_unity'     => '_duration_unity',
         'end_date'           => '_end_date',
@@ -28,10 +31,11 @@ class QuerySubscription extends BaseQueryPost
         'offer_id'           => '_offer_id',
         'offer_label'        => '_offer_label',
         'order_id'           => '_order_id',
+        'limited'            => '_limited',
+        'renewable'          => '_renewable',
         'renewable_days'     => '_renewable_days',
         'renew_notification' => '_renew_notification',
         'start_date'         => '_start_date',
-        'user_id'            => '_user_id',
     ];
 
     /**
@@ -49,6 +53,16 @@ class QuerySubscription extends BaseQueryPost
     }
 
     /**
+     * Récupération de l'email de contact du client associé.
+     *
+     * @return string
+     */
+    public function getCustomerEmail(): string
+    {
+        return $this->get('customer_email') ?: '';
+    }
+
+    /**
      * Récupération de la durée de l'abonnement au format HTML.
      *
      * @return string|null
@@ -62,13 +76,13 @@ class QuerySubscription extends BaseQueryPost
         switch ($this->getDurationUnity()) {
             default :
             case 'year' :
-                return sprintf(_n('%d an', '%d ans', $length, 'theme'), $length);
+                return sprintf(_n('%d an', '%d ans', $length, 'tify'), $length);
                 break;
             case 'month' :
-                return sprintf(_n('%d mois', '%d mois', $length, 'theme'), $length);
+                return sprintf(_n('%d mois', '%d mois', $length, 'tify'), $length);
                 break;
             case 'day' :
-                return sprintf(_n('%d jour', '%d jours', $length, 'theme'), $length);
+                return sprintf(_n('%d jour', '%d jours', $length, 'tify'), $length);
                 break;
         }
     }
@@ -114,6 +128,16 @@ class QuerySubscription extends BaseQueryPost
     }
 
     /**
+     * Récupération de l'offre associée.
+     *
+     * @return QueryOffer|null
+     */
+    public function getOffer(): ?QueryOffer
+    {
+        return ($id = (int)$this->get('offer_id')) ? $this->subscription()->offer()->get($id) : null;
+    }
+
+    /**
      * Récupération du nombre de jours de la période de ré-engagement.
      *
      * @return int
@@ -150,13 +174,14 @@ class QuerySubscription extends BaseQueryPost
     }
 
     /**
-     * Récupération de l'utilisateur associé.
+     * Récupération du client associé.
      *
-     * @return QueryUserContract|null
+     * @return SubscriptionCustomer|null
      */
-    public function getUser(): ?QueryUserContract
+    public function getCustomer(): ?SubscriptionCustomer
     {
-        return ($id = $this->get('user_id')) ? QueryUser::createFromId($id) : null;
+        return ($id = (int)$this->get('customer_id'))
+            ? $this->subscription()->customer($id) : $this->subscription()->customer($this->get('customer_email'));
     }
 
     /**
@@ -232,6 +257,34 @@ class QuerySubscription extends BaseQueryPost
         }
 
         return $date->greaterThanOrEqualTo($end);
+    }
+
+    /**
+     * Vérification de l'activation de l'engagement.
+     *
+     * @return bool
+     */
+    public function isLimitationEnabled(): bool
+    {
+        if ($limited = $this->get('limited')) {
+            return filter_var($limited, FILTER_VALIDATE_BOOLEAN);
+        } else {
+            return $this->subscription()->settings()->isOfferLimitationEnabled();
+        }
+    }
+
+    /**
+     * Vérification de l'activation du ré-engagement.
+     *
+     * @return bool
+     */
+    public function isRenewEnabled(): bool
+    {
+        if ($renewable = $this->get('renewable')) {
+            return filter_var($renewable, FILTER_VALIDATE_BOOLEAN);
+        } else {
+            return $this->subscription()->settings()->isOfferRenewEnabled();
+        }
     }
 
     /**
@@ -320,7 +373,7 @@ class QuerySubscription extends BaseQueryPost
             'meta'        => [],
         ];
 
-        $postdata['post_title'] = sprintf(__('Abonnement n°%s', 'theme'), $this->getId());
+        $postdata['post_title'] = sprintf(__('Abonnement n°%s', 'tify'), $this->getId());
 
         foreach ($this->metasMap as $key => $metaKey) {
             $postdata['meta'][$metaKey] = $this->get($key);

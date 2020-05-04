@@ -1,11 +1,11 @@
 <?php declare(strict_types=1);
 
-namespace tiFy\Plugins\Subscription\Offer;
+namespace tiFy\Plugins\Subscription\Column;
 
+use tiFy\Plugins\Subscription\QuerySubscription;
 use tiFy\Column\AbstractColumnDisplayPostTypeController;
-use tiFy\Plugins\Subscription\Proxy\Subscription;
 
-class OfferDetailsColumn extends AbstractColumnDisplayPostTypeController
+class SubscriptionDetailsColumn extends AbstractColumnDisplayPostTypeController
 {
     /**
      * @inheritDoc
@@ -20,9 +20,9 @@ class OfferDetailsColumn extends AbstractColumnDisplayPostTypeController
      */
     public function content($column_name = null, $post_id = null, $null = null)
     {
-        $offer = QueryOffer::create($post_id);
-        $settings = Subscription::settings();
+        /** @var QuerySubscription|null $post */
+        $subscription = QuerySubscription::create($post_id);
 
-        return $this->viewer('index', compact('offer', 'settings'));
+        return $this->viewer('index', compact('subscription'));
     }
 }
