@@ -6,7 +6,7 @@
 ?>
 <table class="Form-table">
     <tr>
-        <th><?php _e('Nom de famille', 'theme'); ?></th>
+        <th><?php _e('Nom de famille', 'tify'); ?></th>
         <td>
             <?php echo field('text', [
                 'attrs' => [
@@ -18,7 +18,7 @@
         </td>
     </tr>
     <tr>
-        <th><?php _e('Prénom', 'theme'); ?></th>
+        <th><?php _e('Prénom', 'tify'); ?></th>
         <td>
             <?php echo field('text', [
                 'attrs' => [
@@ -30,19 +30,7 @@
         </td>
     </tr>
     <tr>
-        <th><?php _e('Société', 'theme'); ?></th>
-        <td>
-            <?php echo field('text', [
-                'attrs' => [
-                    'class' => '%s widefat',
-                    'readonly'
-                ],
-                'value' => $order->getBilling('company')
-            ]); ?>
-        </td>
-    </tr>
-    <tr>
-        <th><?php _e('Adresse', 'theme'); ?></th>
+        <th><?php _e('Adresse', 'tify'); ?></th>
         <td>
             <?php echo field('text', [
                 'attrs' => [
@@ -54,7 +42,7 @@
         </td>
     </tr>
     <tr>
-        <th><?php _e('Adresse complémentaire', 'theme'); ?></th>
+        <th><?php _e('Adresse complémentaire', 'tify'); ?></th>
         <td>
             <?php echo field('text', [
                 'attrs' => [
@@ -66,7 +54,7 @@
         </td>
     </tr>
     <tr>
-        <th><?php _e('Ville', 'theme'); ?></th>
+        <th><?php _e('Ville', 'tify'); ?></th>
         <td>
             <?php echo field('text', [
                 'attrs' => [
@@ -78,7 +66,7 @@
         </td>
     </tr>
     <tr>
-        <th><?php _e('Code postal', 'theme'); ?></th>
+        <th><?php _e('Code postal', 'tify'); ?></th>
         <td>
             <?php echo field('text', [
                 'attrs' => [
@@ -90,7 +78,7 @@
         </td>
     </tr>
     <tr>
-        <th><?php _e('Numéro de téléphone', 'theme'); ?></th>
+        <th><?php _e('Numéro de téléphone', 'tify'); ?></th>
         <td>
             <?php echo field('text', [
                 'attrs' => [
@@ -102,7 +90,7 @@
         </td>
     </tr>
     <tr>
-        <th><?php _e('Adresse de messagerie', 'theme'); ?></th>
+        <th><?php _e('Adresse de messagerie', 'tify'); ?></th>
         <td>
             <?php echo field('text', [
                 'attrs' => [

@@ -2,6 +2,7 @@
 
 namespace tiFy\Plugins\Subscription\Gateway;
 
+use Illuminate\Support\Collection;
 use tiFy\Plugins\Subscription\SubscriptionAwareTrait;
 use tiFy\Plugins\Subscription\Contracts\PaymentGateway;
 
@@ -26,6 +27,18 @@ class Gateway
      * @var array[]
      */
     protected $params = [];
+
+    /**
+     * Récupération de la liste des plateformes de paiement disponible.
+     *
+     * @return PaymentGateway[]|array
+     */
+    public function available(): array
+    {
+        return (new Collection($this->paymentGateway))->filter(function (PaymentGateway $item, $name) {
+            return ($name === $item->getName()) && $item->isEnabled();
+        })->all();
+    }
 
     /**
      * Initialisation.
@@ -81,8 +94,11 @@ class Gateway
      */
     public function set(string $name, PaymentGateway $paymentGateway)
     {
-        $this->paymentGateway[$name] = $paymentGateway->setSubscription($this->subscription)
-            ->setParams($this->params[$name] ?: [])->boot();
+        $this->paymentGateway[$name] = $paymentGateway
+            ->setName($name)
+            ->setSubscription($this->subscription)
+            ->setParams($this->params[$name] ?: [])
+            ->boot();
 
         return $this;
     }

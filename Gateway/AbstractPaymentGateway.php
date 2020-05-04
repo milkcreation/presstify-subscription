@@ -20,6 +20,12 @@ class AbstractPaymentGateway implements PaymentGateway
     protected $booted = false;
 
     /**
+     * Nom de qualification de la déclaration.
+     * @var string
+     */
+    protected $name = '';
+
+    /**
      * Instance des paramètres de configuration.
      * @var ParamsBag|null
      */
@@ -76,11 +82,32 @@ class AbstractPaymentGateway implements PaymentGateway
     {
         return [
             /**
+             * Activation du mode de débogguage.
+             * @var bool
+             */
+            'debug' => true,
+            /**
              * Activation de la plateforme de paiement.
              * @var bool
              */
             'enabled' => true
         ];
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function getLabel(): string
+    {
+        return $this->params('label', $this->name);
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function getName(): string
+    {
+        return $this->name;
     }
 
     /**
@@ -126,7 +153,7 @@ class AbstractPaymentGateway implements PaymentGateway
     /**
      * @inheritDoc
      */
-    public function handlePending(): void
+    public function handleOnHold(): void
     {
         return;
     }
@@ -142,9 +169,17 @@ class AbstractPaymentGateway implements PaymentGateway
     /**
      * @inheritDoc
      */
+    public function isDebug(): bool
+    {
+        return filter_var($this->params('debug', true), FILTER_VALIDATE_BOOLEAN);
+    }
+
+    /**
+     * @inheritDoc
+     */
     public function isEnabled(): bool
     {
-        return (bool)$this->params('enabled', true);
+        return filter_var($this->params('enabled', true), FILTER_VALIDATE_BOOLEAN);
     }
 
     /**
@@ -163,6 +198,16 @@ class AbstractPaymentGateway implements PaymentGateway
         } else {
             return $this->params;
         }
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function setName(string $name): PaymentGateway
+    {
+        $this->name = $name;
+
+        return $this;
     }
 
     /**

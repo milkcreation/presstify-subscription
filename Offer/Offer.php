@@ -30,8 +30,8 @@ class Offer
             add_action('admin_menu', function () {
                 add_submenu_page(
                     $this->subscription()->config('admin_menu.menu_slug', 'subscription'),
-                    __('Liste des offres', 'theme'),
-                    __('Offres', 'theme'),
+                    __('Liste des offres', 'tify'),
+                    __('Offres', 'tify'),
                     'edit_posts',
                     'edit.php?post_type=subscription-offer',
                     '',
@@ -62,8 +62,8 @@ class Offer
 
             /* TYPE DE POST */
             PostType::register('subscription-offer', [
-                'plural'             => __('Offres', 'theme'),
-                'singular'           => __('Offre', 'theme'),
+                'plural'             => __('Offres', 'tify'),
+                'singular'           => __('Offre', 'tify'),
                 'hierarchical'       => false,
                 'publicly_queryable' => false,
                 'show_in_menu'       => false,
@@ -112,9 +112,9 @@ class Offer
                     'device'    => $this->subscription()->functions()->getCurrencySymbol(),
                     'taxable'   => $this->subscription()->settings()->isTaxEnabled(),
                     'tax_label' => $this->subscription()->settings()->isPricesIncludeTax()
-                        ? __('TTC', 'theme') : __('HT', 'theme'),
+                        ? __('TTC', 'tify') : __('HT', 'tify'),
                 ],
-                'title'  => __('Détails du produit', 'theme'),
+                'title'  => __('Détails du produit', 'tify'),
                 'viewer' => [
                     'directory' => $this->subscription()->resources('/views/admin/metabox/post-type/offer-details'),
                 ],

@@ -35,6 +35,20 @@ interface PaymentGateway
     public function defaults(): array;
 
     /**
+     * Récupération de l'intitulé de qualification de la méthode de paiement.
+     *
+     * @return string
+     */
+    public function getLabel(): string;
+
+    /**
+     * Récupération du nom de qualification de la déclaration.
+     *
+     * @return string
+     */
+    public function getName(): string;
+
+    /**
      * Récupération du formulaire de paiement.
      *
      * @return string
@@ -81,7 +95,14 @@ interface PaymentGateway
      *
      * @return void
      */
-    public function handlePending(): void;
+    public function handleOnHold(): void;
+
+    /**
+     * Vérification d'activation du mode de débogguage.
+     *
+     * @return bool
+     */
+    public function isDebug(): bool;
 
     /**
      * Vérification d'activation de la plateforme de paiement.
@@ -99,6 +120,15 @@ interface PaymentGateway
      * @return mixed|ParamsBag
      */
     public function params($key = null, $default = null);
+
+    /**
+     * Définition du nom de qualification de la déclaration.
+     *
+     * @param string $name
+     *
+     * @return static
+     */
+    public function setName(string $name): PaymentGateway;
 
     /**
      * Définition de la liste des paramètres de configuration.

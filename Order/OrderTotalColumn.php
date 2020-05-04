@@ -11,7 +11,7 @@ class OrderTotalColumn extends AbstractColumnDisplayPostTypeController
      */
     public function header()
     {
-        return $this->item->getTitle() ? : __('Total', 'theme');
+        return $this->item->getTitle() ? : __('Total', 'tify');
     }
 
     /**

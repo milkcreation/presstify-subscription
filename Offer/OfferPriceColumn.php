@@ -12,7 +12,7 @@ class OfferPriceColumn extends AbstractColumnDisplayPostTypeController
      */
     public function header()
     {
-        return $this->item->getTitle() ? : __('Prix', 'theme');
+        return $this->item->getTitle() ? : __('Prix', 'tify');
     }
 
     /**

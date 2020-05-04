@@ -11,7 +11,7 @@ class OrderStatusColumn extends AbstractColumnDisplayPostTypeController
      */
     public function header()
     {
-        return $this->item->getTitle() ? : __('État', 'theme');
+        return $this->item->getTitle() ? : __('État', 'tify');
     }
 
     /**

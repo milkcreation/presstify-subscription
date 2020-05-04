@@ -5,6 +5,6 @@
 ?>
 <?php $this->layout('subscription::layout'); ?>
 
-<?php echo partial('flash-notice'); ?>
+<p><?php echo partial('flash-notice'); ?></p>
 
-PAIEMENT OK
+<?php echo $this->get('form');

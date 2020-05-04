@@ -6,8 +6,8 @@ use tiFy\Plugins\Subscription\SubscriptionAwareTrait;
 use Illuminate\Support\Collection;
 use tiFy\Contracts\{Metabox\MetaboxDriver, PostType\PostTypeStatus};
 use tiFy\Support\Proxy\{Column, Metabox, PostType};
-use tiFy\Wordpress\Contracts\Query\{QueryPost as QueryPostContract, QueryUser as QueryUserContract};
-use WP_Post, WP_Query, WP_User;
+use tiFy\Wordpress\Contracts\Query\{QueryPost as QueryPostContract};
+use WP_Post, WP_Query;
 
 class Order
 {
@@ -37,8 +37,8 @@ class Order
             add_action('admin_menu', function () {
                 add_submenu_page(
                     $this->subscription()->config('admin_menu.menu_slug', 'subscription'),
-                    __('Liste des commandes', 'theme'),
-                    __('Commandes', 'theme'),
+                    __('Liste des commandes', 'tify'),
+                    __('Commandes', 'tify'),
                     'edit_posts',
                     'edit.php?post_type=subscription-order',
                     '',
@@ -91,7 +91,7 @@ class Order
                 global $post;
 
                 if ($post->post_type === 'subscription-order') {
-                    $messages['post'][1] = __('Commande mise à jour', 'theme');
+                    $messages['post'][1] = __('Commande mise à jour', 'tify');
                 }
 
                 return $messages;
@@ -100,8 +100,8 @@ class Order
 
             /* TYPE DE POST */
             PostType::register('subscription-order', [
-                'plural'              => __('Commandes', 'theme'),
-                'singular'            => __('Commande', 'theme'),
+                'plural'              => __('Commandes', 'tify'),
+                'singular'            => __('Commande', 'tify'),
                 'gender'              => true,
                 'publicly_queryable'  => false,
                 'exclude_from_search' => true,
@@ -135,10 +135,10 @@ class Order
             /**/
 
             /* STATUT DE POST */
-            /* Commande - Attente de réglement */
+            /* Commande - En cours de réglement */
             $this->setStatus('pending', [
                 'name'                      => 'sbscodr-pending',
-                'label'                     => _x('En attente de paiement', 'order_status', 'theme'),
+                'label'                     => _x('En attente de paiement', 'order_status', 'tify'),
                 'public'                    => false,
                 'exclude_from_search'       => false,
                 'show_in_admin_all_list'    => true,
@@ -146,14 +146,14 @@ class Order
                 'label_count'               => _n_noop(
                     'En attente de paiement <span class="count">(%s)</span>',
                     'En attente de paiement <span class="count">(%s)</span>',
-                    'theme'
+                    'tify'
                 ),
             ]);
             /**/
             /* Commande - En préparation */
             $this->setStatus('processing', [
                 'name'                      => 'sbscodr-processing',
-                'label'                     => _x('En préparation', 'order_status', 'theme'),
+                'label'                     => _x('En préparation', 'order_status', 'tify'),
                 'public'                    => false,
                 'exclude_from_search'       => false,
                 'show_in_admin_all_list'    => true,
@@ -161,14 +161,14 @@ class Order
                 'label_count'               => _n_noop(
                     'En préparation <span class="count">(%s)</span>',
                     'En préparation <span class="count">(%s)</span>',
-                    'theme'
+                    'tify'
                 ),
             ]);
             /**/
             /* Commande - En attente */
             $this->setStatus('on-hold', [
                 'name'                      => 'sbscodr-on-hold',
-                'label'                     => _x('En attente', 'order_status', 'theme'),
+                'label'                     => _x('En attente', 'order_status', 'tify'),
                 'public'                    => false,
                 'exclude_from_search'       => false,
                 'show_in_admin_all_list'    => true,
@@ -176,14 +176,14 @@ class Order
                 'label_count'               => _n_noop(
                     'En attente <span class="count">(%s)</span>',
                     'En attente <span class="count">(%s)</span>',
-                    'theme'
+                    'tify'
                 ),
             ]);
             /**/
             /* Commande - Terminée */
             $this->setStatus('completed', [
                 'name'                      => 'sbscodr-completed',
-                'label'                     => _x('Terminée', 'order_status', 'theme'),
+                'label'                     => _x('Terminée', 'order_status', 'tify'),
                 'public'                    => false,
                 'exclude_from_search'       => false,
                 'show_in_admin_all_list'    => true,
@@ -191,14 +191,14 @@ class Order
                 'label_count'               => _n_noop(
                     'Terminée <span class="count">(%s)</span>',
                     'Terminée <span class="count">(%s)</span>',
-                    'theme'
+                    'tify'
                 ),
             ]);
             /**/
             /* Commande - Annulée */
             $this->setStatus('cancelled', [
                 'name'                      => 'sbscodr-cancelled',
-                'label'                     => _x('Annulée', 'order_status', 'theme'),
+                'label'                     => _x('Annulée', 'order_status', 'tify'),
                 'public'                    => false,
                 'exclude_from_search'       => false,
                 'show_in_admin_all_list'    => true,
@@ -206,14 +206,14 @@ class Order
                 'label_count'               => _n_noop(
                     'Annulée <span class="count">(%s)</span>',
                     'Annulée <span class="count">(%s)</span>',
-                    'theme'
+                    'tify'
                 ),
             ]);
             /**/
             /* Commande - Remboursée */
             $this->setStatus('refunded', [
                 'name'                      => 'sbscodr-refunded',
-                'label'                     => _x('Remboursée', 'order_status', 'theme'),
+                'label'                     => _x('Remboursée', 'order_status', 'tify'),
                 'public'                    => false,
                 'exclude_from_search'       => false,
                 'show_in_admin_all_list'    => true,
@@ -221,14 +221,14 @@ class Order
                 'label_count'               => _n_noop(
                     'Remboursée <span class="count">(%s)</span>',
                     'Remboursée <span class="count">(%s)</span>',
-                    'theme'
+                    'tify'
                 ),
             ]);
             /**/
             /* Commande - Echouée */
             $this->setStatus('failed', [
                 'name'                      => 'sbscodr-failed',
-                'label'                     => _x('Echouée', 'order_status', 'theme'),
+                'label'                     => _x('Echouée', 'order_status', 'tify'),
                 'public'                    => false,
                 'exclude_from_search'       => false,
                 'show_in_admin_all_list'    => true,
@@ -236,14 +236,14 @@ class Order
                 'label_count'               => _n_noop(
                     'Echouée <span class="count">(%s)</span>',
                     'Echouée <span class="count">(%s)</span>',
-                    'theme'
+                    'tify'
                 ),
             ]);
             /**/
 
             /* METABOXES */
             Metabox::add('order-actions', [
-                'title'  => __('Actions sur la commande', 'theme'),
+                'title'  => __('Actions sur la commande', 'tify'),
                 'viewer' => [
                     'directory' => $this->subscription()->resources('/views/admin/metabox/post-type/order-actions'),
                 ],
@@ -254,7 +254,7 @@ class Order
                 });
 
             Metabox::add('order-details', [
-                'title'  => __('Détails de la commande', 'theme'),
+                'title'  => __('Détails de la commande', 'tify'),
                 'viewer' => [
                     'directory' => $this->subscription()->resources('/views/admin/metabox/post-type/order-details'),
                 ],
@@ -265,7 +265,7 @@ class Order
                 });
 
             Metabox::add('order-addresses', [
-                'title'  => __('Adresses', 'theme'),
+                'title'  => __('Adresses', 'tify'),
                 'viewer' => [
                     'directory' => $this->subscription()->resources('/views/admin/metabox/post-type/order-addresses'),
                 ],
@@ -273,7 +273,7 @@ class Order
 
             Metabox::add('order-billing', [
                 'parent' => 'order-addresses',
-                'title'  => __('Facturation', 'theme'),
+                'title'  => __('Facturation', 'tify'),
                 'viewer' => [
                     'directory' => $this->subscription()->resources(
                         '/views/admin/metabox/post-type/order-addresses/billing'
@@ -287,7 +287,7 @@ class Order
 
             Metabox::add('order-shipping', [
                 'parent' => 'order-addresses',
-                'title'  => __('Livraison', 'theme'),
+                'title'  => __('Livraison', 'tify'),
                 'viewer' => [
                     'directory' => $this->subscription()->resources(
                         '/views/admin/metabox/post-type/order-addresses/shipping'
@@ -335,37 +335,6 @@ class Order
     }
 
     /**
-     * Liste des instances de commandes associées à un utilisateur.
-     *
-     * @param WP_User|QueryUserContract|int|null $user
-     * @param array $args Liste des arguments de récupération des commandes.
-     *
-     * @return QueryOrder[]|array
-     */
-    public function user($user = null, array $args = []): array
-    {
-        if (is_numeric($user)) {
-            $user_id = $user;
-        } elseif ($user instanceof WP_User) {
-            $user_id = $user->ID;
-        } elseif ($user instanceof QueryUserContract) {
-            $user_id = $user->getId();
-        } else {
-            $user_id = $this->subscription()->user()->getId();
-        }
-
-        return QueryOrder::fetch(array_merge(['posts_per_page' => 10], $args, [
-            'meta_query' => [
-                'relation' => 'AND',
-                [
-                    'key' => '_customer_user',
-                    'value' => $user_id
-                ]
-            ]
-        ]));
-    }
-
-    /**
      * Définition d'un statut de commande.
      *
      * @param string $alias Alias de qualification.
@@ -378,7 +347,10 @@ class Order
         $name = $args['name'] ?? $alias;
         unset($args['name']);
 
-        $this->statuses[$alias] = OrderStatus::create($name, $args)->setAlias($alias);
+        /** @var OrderStatus $status */
+        $status = OrderStatus::create($name, $args);
+
+        $this->statuses[$alias] = $status->setAlias($alias);
 
         return $this;
     }
@@ -398,7 +370,7 @@ class Order
      *
      * @param string $alias_or_name Alias ou nom de qualification du statut de commande
      *
-     * @return PostTypeStatus|null
+     * @return PostTypeStatus|OrderStatus|null
      */
     public function status(string $alias_or_name): ?PostTypeStatus
     {
