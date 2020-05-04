@@ -2,7 +2,6 @@
 
 namespace tiFy\Plugins\Subscription\Order;
 
-use Exception;
 use Illuminate\Support\Collection;
 use tiFy\Contracts\Mail\Mail as MailContract;
 use tiFy\Contracts\PostType\PostTypeStatus;
@@ -29,22 +28,10 @@ class QueryOrder extends BaseQueryPost
     protected static $postType = 'subscription-order';
 
     /**
-     * Instance du client associé à la commande.
-     * @var SubscriptionCustomer|null
-     */
-    protected $customer;
-
-    /**
-     * Liste des instances de produits associés à la commande.
-     * @var QueryOrderLineItem[]|array|null
-     */
-    protected $lineItems;
-
-    /**
      * Cartographie des clés d'indice de métadonnées associées à la commande.
-     * @var array
+     * @var string[]
      */
-    protected $metasMap = [
+    protected static $metasMap = [
         'card_first'           => '_card_first',
         'card_last'            => '_card_last',
         'card_valid'           => '_card_valid',
@@ -68,6 +55,18 @@ class QueryOrder extends BaseQueryPost
         'total_tax'            => '_order_tax',
         'version'              => '_order_version',
     ];
+
+    /**
+     * Instance du client associé à la commande.
+     * @var SubscriptionCustomer|null
+     */
+    protected $customer;
+
+    /**
+     * Liste des instances de produits associés à la commande.
+     * @var QueryOrderLineItem[]|array|null
+     */
+    protected $lineItems;
 
     /**
      * Instance de la plateforme de paiement associée.
@@ -138,8 +137,22 @@ class QueryOrder extends BaseQueryPost
      */
     public static function insert(): ?QueryPostContract
     {
-        return ($id = wp_insert_post(['post_type' => static::$postType, 'post_status' => 'publish']))
-            ? static::createFromId($id) : null;
+        return ($id = wp_insert_post([
+            'post_type'   => static::$postType,
+            'post_status' => subscription()->order()->statusDefault()->getName(),
+        ])) ? static::createFromId($id) : null;
+    }
+
+    /**
+     * Définition de metadonnées complémentaires.
+     *
+     * @param string[] $map
+     *
+     * @return void
+     */
+    public static function setMetasMap(array $map): void
+    {
+        static::$metasMap = array_merge($map, static::$metasMap);
     }
 
     /**
@@ -200,48 +213,6 @@ class QueryOrder extends BaseQueryPost
         $this->lineItems = null;
 
         return $this;
-    }
-
-    /**
-     * Création de l'abonnement associé à la commande en attente de paiement.
-     *
-     * @param array $args Liste des arguments de création complémentaires.
-     *
-     * @return QuerySubscription|null
-     *
-     * @throws Exception
-     */
-    public function createSubscription(array $args = []): ?QuerySubscription
-    {
-        if (!$line = $this->getLineItems()[0] ?: null) {
-            throw new Exception('OrderLine Unavalaible');
-        }
-
-        if ($subscr = $this->getSubscription()) {
-            return $subscr;
-        } elseif (!$subscr = QuerySubscription::insert()) {
-            throw new Exception('Subscription Uncreated');
-        } else {
-            $subscr->set(array_merge([
-                'customer_email'     => $this->getBilling('email'),
-                'customer_id'        => $this->getCustomerId(),
-                'duration_length'    => $line->getDurationLength(),
-                'duration_unity'     => $line->getDurationUnity(),
-                'limited'            => $this->subscription()->settings()->isOfferLimitationEnabled() ? 'on' : 'off',
-                'offer_id'           => $line->getOfferId(),
-                'offer_label'        => $line->getLabel(),
-                'order_id'           => $this->getId(),
-                'renewable'          => $this->subscription()->settings()->isOfferRenewEnabled() ? 'on' : 'off',
-                'renewable_days'     => $line->getRenewableDays(),
-                'renew_notification' => $line->isRenewNotify() ? 'on' : 'off',
-                //'start_date'         => $line->calcStartDate()->format('Y-m-d H:i:s'),
-                //'end_date'           => $line->calcEndDate()->format('Y-m-d H:i:s'),
-            ], $args))->update();
-
-            $this->set('subscription_id', $subscr->getId())->update();
-        }
-
-        return $subscr;
     }
 
     /**
@@ -341,7 +312,7 @@ class QueryOrder extends BaseQueryPost
      */
     public function getCustomerEmail(): string
     {
-        return (string)$this->get('customer_email') ? : ($this->getBilling('email') ?: '');
+        return (string)$this->get('customer_email') ?: ($this->getBilling('email') ?: '');
     }
 
     /**
@@ -503,7 +474,7 @@ class QueryOrder extends BaseQueryPost
      */
     public function getMetaMapped($key = null, $default = null)
     {
-        $metaMapKeys = array_keys($this->metasMap);
+        $metaMapKeys = array_keys(static::$metasMap);
         array_push($metaMapKeys, 'billing', 'shipping');
 
         if (is_null($key)) {
@@ -783,7 +754,7 @@ class QueryOrder extends BaseQueryPost
     public function mapMeta($key = null, ?string $metaKey = null): self
     {
         if (is_null($key)) {
-            $keys = $this->metasMap;
+            $keys = static::$metasMap;
         } else {
             $keys = is_array($key) ? $key : [$key => $metaKey];
         }
@@ -907,7 +878,7 @@ class QueryOrder extends BaseQueryPost
             $postdata['post_title'] .= ' &ndash; ' . date_i18n('j F Y @ H:i A', strtotime($date));
         }
 
-        foreach ($this->metasMap as $key => $metaKey) {
+        foreach (static::$metasMap as $key => $metaKey) {
             $postdata['meta'][$metaKey] = $this->get($key);
         }
 

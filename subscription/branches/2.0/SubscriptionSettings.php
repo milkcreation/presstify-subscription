@@ -110,6 +110,36 @@ class SubscriptionSettings
     }
 
     /**
+     * Récupération de la durée d'engagement des offres.
+     *
+     * @return int
+     */
+    public function getOfferLimitedLength(): int
+    {
+        return (int)$this->params('offer.limited.length', 1);
+    }
+
+    /**
+     * Récupération de l'unité de la durée d'engagement des offres.
+     *
+     * @return string
+     */
+    public function getOfferLimitedUnity(): string
+    {
+        return (string)$this->params('offer.limited.unity', 'year');
+    }
+
+    /**
+     * Récupération du nombre de jour de permissions de ré-engagement des offres.
+     *
+     * @return int
+     */
+    public function getOfferRenewDays(): int
+    {
+        return (int)$this->params('offer.renew.days', 30);
+    }
+
+    /**
      * Récupération du nombre de décimal utilisée pour le calcul et l'affichage du prix.
      *
      * @return int
@@ -190,9 +220,9 @@ class SubscriptionSettings
      *
      * @return bool
      */
-    public function isOfferLimitationEnabled(): bool
+    public function isOfferLimitedEnabled(): bool
     {
-        return filter_var($this->params('offer.limitation.enabled', 'on'), FILTER_VALIDATE_BOOLEAN);
+        return filter_var($this->params('offer.limited.enabled', 'on'), FILTER_VALIDATE_BOOLEAN);
     }
 
     /**
@@ -203,6 +233,16 @@ class SubscriptionSettings
     public function isOfferRenewEnabled(): bool
     {
         return filter_var($this->params('offer.renew.enabled', 'on'), FILTER_VALIDATE_BOOLEAN);
+    }
+
+    /**
+     * Vérifie si la gestion du ré-engagement est actif.
+     *
+     * @return bool
+     */
+    public function isOfferRenewNotify(): bool
+    {
+        return filter_var($this->params('offer.renew.notify', 'on'), FILTER_VALIDATE_BOOLEAN);
     }
 
     /**

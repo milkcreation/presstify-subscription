@@ -52,13 +52,15 @@ class Offer
             });
             /**/
 
+            /* Tri des offres depuis l'interface d'administration */
             add_action('pre_get_posts', function (WP_Query $wp_query) {
-                if (is_admin() && $wp_query->is_main_query() && get_current_screen()->id === 'edit-offer') {
-                    if (!$wp_query->get('orderby')) {
-                        $wp_query->set('orderby', ['menu_order' => 'ASC']);
-                    }
+                if (is_admin() && $wp_query->is_main_query() &&
+                    (get_current_screen()->id === 'edit-subscription-offer') && !$wp_query->get('orderby')
+                ) {
+                    $wp_query->set('orderby', ['menu_order' => 'ASC']);
                 }
             });
+            /**/
 
             /* TYPE DE POST */
             PostType::register('subscription-offer', [
@@ -73,14 +75,16 @@ class Offer
 
             /* METADONNES */
             PostType::meta()
+                ->registerSingle('subscription-offer', '_limited_length')
+                ->registerSingle('subscription-offer', '_limited_unity')
                 ->registerSingle('subscription-offer', '_label')
-                ->registerSingle('subscription-offer', '_sku')
-                ->registerSingle('subscription-offer', '_duration_length')
-                ->registerSingle('subscription-offer', '_duration_unity')
+                ->registerSingle('subscription-offer', '_limited')
                 ->registerSingle('subscription-offer', '_price')
-                ->registerSingle('subscription-offer', '_tax')
-                ->registerSingle('subscription-offer', '_renewable_days')
-                ->registerSingle('subscription-offer', '_renew_notification');
+                ->registerSingle('subscription-offer', '_renewable')
+                ->registerSingle('subscription-offer', '_renew_days')
+                ->registerSingle('subscription-offer', '_renew_notify')
+                ->registerSingle('subscription-offer', '_sku')
+                ->registerSingle('subscription-offer', '_tax');
             /**/
 
             /* COLONNES */

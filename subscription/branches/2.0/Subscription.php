@@ -2,7 +2,6 @@
 
 namespace tiFy\Plugins\Subscription;
 
-use App\Wordpress\QueryUser;
 use Exception;
 use Psr\Container\ContainerInterface as Container;
 use tiFy\Contracts\{Log\Logger, Partial\FlashNotice, Routing\Route};
@@ -22,13 +21,13 @@ use tiFy\Support\{ParamsBag, Str};
 use tiFy\Support\Proxy\{Column, Form, Log, Metabox, Partial, PostType, Router, View};
 use tiFy\Wordpress\Contracts\Query\{QueryPost as QueryPostContract, QueryUser as QueryUserContract};
 use tiFy\Metabox\MetaboxDriver;
-use WP_Post, WP_Query, WP_User;
+use WP_Post, WP_User, WP_Query;
 
 /**
  * @desc Extension PresstiFy de gestion d'abonnements.
  * @author Jordy Manner <jordy@milkcreation.fr>
  * @package tiFy\Plugins\Subscription
- * @version 2.0.1
+ * @version 2.0.2
  *
  * USAGE :
  * Activation
@@ -258,8 +257,8 @@ class Subscription
             /* METABOXES */
             PostType::meta()
                 ->registerSingle('subscription', '_product_label')
-                ->registerSingle('subscription', '_renewable_days')
-                ->registerSingle('subscription', '_renew_notification');
+                ->registerSingle('subscription', '_renew_days')
+                ->registerSingle('subscription', '_renew_notify');
 
             Metabox::add('subscription-actions', [
                 'title'  => __('Actions sur l\'abonnement', 'tify'),
@@ -391,7 +390,7 @@ class Subscription
     /**
      * Récupération de l'instance d'un client.
      *
-     * @param string|int|QueryUserContract|null $id Identification du client email|user_id|query
+     * @param string|int|QueryUserContract|WP_User|null $id Identification du client email|user_id|query
      *
      * @return SubscriptionCustomer|null
      */

@@ -15,14 +15,14 @@
     <dd>
         <label><?php _e('Actif', 'tify'); ?> : </label>
         <span>
-            <?php echo $subscription->isLimitationEnabled() ? __('Oui', 'tify') : __('Non', 'tify') ?>
+            <?php echo $subscription->isLimitedEnabled() ? __('Oui', 'tify') : __('Non', 'tify') ?>
         </span>
     </dd>
-    <?php if ($subscription->isLimitationEnabled()) : ?>
+    <?php if ($subscription->isLimitedEnabled()) : ?>
     <dd>
         <label><?php _e('Durée de l\'abonnement', 'tify'); ?> : </label>
         <span>
-            <?php echo $subscription->getDurationHtml() ? : '--' ?>
+            <?php echo $subscription->getLimitedHtml() ? : '--' ?>
         </span>
     </dd>
     <dd>
@@ -50,7 +50,7 @@
     <dd>
         <label><?php _e('A partir de', 'tify'); ?> : </label>
         <span>
-            <?php echo ($days = $subscription->getRenewableDays())
+            <?php echo ($days = $subscription->getRenewDays())
                 ? sprintf(_n('%d jour', '%d jours', $days, 'tify'), $days) : '--'; ?>
         </span>
     </dd>

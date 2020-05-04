@@ -91,12 +91,12 @@
         <td>
             <?php echo field('toggle-switch', [
                 'name'  => '_limited',
-                'value' => $subscription->isLimitationEnabled() ? 'on' : 'off',
+                'value' => $subscription->isLimitedEnabled() ? 'on' : 'off',
             ]); ?>
         </td>
     </tr>
 </table>
-<table class="Form-table LimitationEnabled<?php echo $subscription->isLimitationEnabled() ? '' : ' hidden'; ?>">
+<table class="Form-table LimitedEnabled<?php echo $subscription->isLimitedEnabled() ? '' : ' hidden'; ?>">
     <tr>
         <th><?php _e('Durée de l\'abonnement', 'tify'); ?></th>
         <td>
@@ -105,8 +105,8 @@
                     'min' => 0,
                     'readonly',
                 ],
-                'name'  => '_duration_length',
-                'value' => $subscription->getDurationLength(),
+                'name'  => '_limited_length',
+                'value' => $subscription->getLimitedLength(),
             ]); ?>
             <?php echo field('select-js', [
                 'choices'  => [
@@ -115,8 +115,8 @@
                     'day'   => __('Jour(s)', 'tify'),
                 ],
                 'disabled' => true,
-                'name'     => '_duration_unity',
-                'value'    => $subscription->getDurationUnity(),
+                'name'     => '_limited_unity',
+                'value'    => $subscription->getLimitedUnity(),
             ]); ?>
         </td>
     </tr>
@@ -166,8 +166,8 @@
                 'attrs' => [
                     'min' => 0,
                 ],
-                'name'  => '_renewable_days',
-                'value' => $subscription->getRenewableDays(),
+                'name'  => '_renew_days',
+                'value' => $subscription->getRenewDays(),
             ])); ?>
         </td>
     </tr>
@@ -175,7 +175,7 @@
         <th><?php _e('Envoyer une notification par mail à l\'abonné', 'tify'); ?></th>
         <td>
             <?php echo field('toggle-switch', [
-                'name'  => '_renew_notification',
+                'name'  => '_renew_notify',
                 'value' => $subscription->isRenewNotify() ? 'on' : 'off',
             ]); ?>
         </td>

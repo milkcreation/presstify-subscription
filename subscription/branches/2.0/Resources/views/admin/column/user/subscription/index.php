@@ -15,14 +15,14 @@
         <dd>
             <label><?php _e('Actif', 'tify'); ?> : </label>
             <span>
-                <?php echo $s->isLimitationEnabled() ? __('Oui', 'tify') : __('Non', 'tify'); ?>
+                <?php echo $s->isLimitedEnabled() ? __('Oui', 'tify') : __('Non', 'tify'); ?>
             </span>
         </dd>
-        <?php if ($s->isLimitationEnabled()) : ?>
+        <?php if ($s->isLimitedEnabled()) : ?>
             <dd>
                 <label><?php _e('Durée de l\'engagement', 'tify'); ?> : </label>
                 <span>
-                <?php echo $s->getDurationHtml() ?: '--' ?>
+                <?php echo $s->getLimitedHtml() ?: '--' ?>
             </span>
             </dd>
             <dd>
@@ -49,7 +49,7 @@
             <dd>
                 <label><?php _e('A partir de', 'tify'); ?> : </label>
                 <span>
-                <?php echo ($days = $s->getRenewableDays())
+                <?php echo ($days = $s->getRenewDays())
                     ? sprintf(_n('%d jour', '%d jours', $days, 'tify'), $days) : '--'; ?>
             </span>
             </dd>

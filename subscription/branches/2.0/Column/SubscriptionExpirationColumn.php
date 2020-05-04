@@ -36,15 +36,20 @@ class SubscriptionExpirationColumn extends AbstractColumnDisplayPostTypeControll
             $title = __('Actif', 'tify');
         }
 
-        return Partial::get('tag', [
-            'attrs' => [
-                'id' => 'SubscriptionIndicator--' . $qs->getId(),
-                'class' => $class,
-                'href'  => '#SubscriptionIndicator--' . $qs->getId(),
-                //'title' => $title . ' - ' .sprintf(__('Fin de l\'abonnement : %s'), $qs->getEndDate()->format('d/m/Y'))
-            ],
-            'content' => '',
-            'tag' => 'a'
-        ]);
+        /*if (isset($title)) {
+            return Partial::get('tag', [
+                'attrs'   => [
+                    'id'    => 'SubscriptionIndicator--' . $qs->getId(),
+                    'class' => $class,
+                    'href'  => '#SubscriptionIndicator--' . $qs->getId(),
+                    'title' => $title . ' - ' . sprintf(__('Fin de l\'abonnement : %s'),
+                            $qs->getEndDate()->format('d/m/Y'))
+                ],
+                'content' => '',
+                'tag'     => 'a'
+            ]);
+        } else { */
+            return '--';
+        //}
     }
 }
