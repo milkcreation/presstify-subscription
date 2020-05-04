@@ -73,6 +73,20 @@ class SubscriptionCustomer extends ParamsBag
     }
 
     /**
+     * Vérifie si le client est habilité à souscrire un abonnement.
+     *
+     * @return bool
+     */
+    public function canSubscribe(): bool
+    {
+        if (($exists = $this->getSubscription()) && !$exists->isRenewable()) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
      * Récupération de l'email.
      *
      * @return string
@@ -133,15 +147,15 @@ class SubscriptionCustomer extends ParamsBag
                 'meta_query' => [
                     'relation' => 'AND',
                     [
-                        'key'   => '_customer_id',
-                        'value' => $this->getId(),
+                        'key'   => $this->getId() ? '_customer_id': '_customer_email',
+                        'value' => $this->getId() ?: $this->getEmail(),
                     ],
-                    /*[
+                    [
                         'key'     => '_end_date',
-                        'value'   => DateTime::now(DateTime::getGlobalTimeZone()),
+                        'value'   => DateTime::now(),
                         'compare' => '>=',
                         'type'    => 'DATETIME',
-                    ],*/
+                    ],
                 ],
                 'orderby'    => ['meta_value' => 'ASC', 'ID' => 'DESC'],
             ]);
@@ -159,64 +173,4 @@ class SubscriptionCustomer extends ParamsBag
     {
         return ($id = $this->getId()) ? QueryUser::createFromId($id) : null;
     }
-
-    /**
-     * Vérifie si l'utilisateur est habilité à consulter les publications.
-     *
-     * @return bool
-     * /
-     * public function canReadFullPosts(): bool
-     * {
-     * if (!$this->isValidated()) {
-     * return false;
-     * } else {
-     * return !!$this->getSubscriptions();
-     * }
-     * }
-     * /**/
-
-    /**
-     * Vérifie si l'utilisateur est habilité à consulter les alertes.
-     *
-     * @return bool
-     * /
-     * public function canReadNotification(): bool
-     * {
-     * return $this->isValidated() && (!!$this->getNotificationActivityIds() || !!$this->getNotificationAreaIds());
-     * }
-     * /**/
-
-    /**
-     * Vérifie si l'utilisateur est habilité à consulter ses commandes.
-     *
-     * @return bool
-     * /
-     * public function canReadOrder(): bool
-     * {
-     * return $this->isValidated() && $this->hasSubscription());
-     * }
-     * /**/
-
-    /**
-     * Vérifie si l'utilisateur est habilité à souscrire à un nouvel abonnement.
-     *
-     * @return bool
-     * /
-     * public function canSubscribe(): bool
-     * {
-     * if (!$this->isValidated()) {
-     * return false;
-     * } elseif (!$subscriptions = $this->getSubscriptions()) {
-     * return true;
-     * }
-     *
-     * foreach($subscriptions as $s) {
-     * if (!$s->isRenewable()) {
-     * return false;
-     * }
-     * }
-     *
-     * return true;
-     * }
-     * /**/
 }

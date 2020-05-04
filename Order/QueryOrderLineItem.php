@@ -2,7 +2,8 @@
 
 namespace tiFy\Plugins\Subscription\Order;
 
-use tiFy\Plugins\Subscription\{Offer\QueryOffer, SubscriptionAwareTrait};
+use Exception;
+use tiFy\Plugins\Subscription\{Offer\QueryOffer, QuerySubscription, SubscriptionAwareTrait};
 use tiFy\Support\{DateTime, ParamsBag};
 
 class QueryOrderLineItem extends ParamsBag
@@ -40,15 +41,15 @@ class QueryOrderLineItem extends ParamsBag
      *
      * @return DateTime
      */
-    public function calcEndDate():? DateTime
+    public function calcEndDate(): ?DateTime
     {
         if (!$end = $this->calcStartDate()) {
             return null;
         }
 
-        $length = $this->getDurationLength();
+        $length = $this->getLimitedLength();
 
-        switch($this->getDurationUnity()) {
+        switch ($this->getLimitedUnity()) {
             default :
             case 'year' :
                 $end->addYears($length);
@@ -69,7 +70,7 @@ class QueryOrderLineItem extends ParamsBag
      *
      * @return DateTime
      */
-    public function calcStartDate():? DateTime
+    public function calcStartDate(): ?DateTime
     {
         if ($renewable = $this->order->getCustomer()->getRenewableSubscription()) {
             $date = $renewable->getEndDate();
@@ -81,6 +82,40 @@ class QueryOrderLineItem extends ParamsBag
     }
 
     /**
+     * Création de l'abonnement associé.
+     *
+     * @param array $data Liste des données d'abonnment complémentaires.
+     *
+     * @return QuerySubscription|null
+     *
+     * @throws Exception
+     */
+    public function createSubscription(array $data = []): ?QuerySubscription
+    {
+        if ($subscription = QuerySubscription::insert()) {
+            $subscription->set(array_merge([
+                'customer_email' => $this->getOrder()->getCustomerEmail(),
+                'customer_id'    => $this->getOrder()->getCustomerId(),
+                'limited_length' => $this->getLimitedLength(),
+                'limited_unity'  => $this->getLimitedUnity(),
+                'end_date'       => $this->calcEndDate()->format('Y-m-d H:i:s'),
+                'limited'        => $this->isLimitedEnabled() ? 'on' : 'off',
+                'offer_id'       => $this->getOfferId(),
+                'offer_label'    => $this->getLabel(),
+                'order_id'       => $this->getOrderId(),
+                'renewable'      => $this->isRenewEnabled() ? 'on' : 'off',
+                'renew_days'     => $this->getRenewDays(),
+                'renew_notify'   => $this->isRenewNotify() ? 'on' : 'off',
+                'start_date'     => $this->calcStartDate()->format('Y-m-d H:i:s'),
+            ], $data))->update();
+        } else {
+            throw new Exception(__('Impossible de créer un nouvel abonnement.', 'tify'));
+        }
+
+        return $subscription;
+    }
+
+    /**
      * Récupération de la liste des produits associé à une commande.
      *
      * @param QueryOrder|int|string $order Instance|Identifiant de qualification|Clé de qualification de la commande.
@@ -89,15 +124,15 @@ class QueryOrderLineItem extends ParamsBag
      */
     public static function fetchFromOrder($order): array
     {
-        if(is_numeric($order)) {
-            $order = QueryOrder::createFromId((int) $order);
+        if (is_numeric($order)) {
+            $order = QueryOrder::createFromId((int)$order);
         } elseif (is_string($order)) {
             $order = QueryOrder::createFromOrderKey($order);
         }
 
         if ($order instanceof QueryOrder) {
             $lineItems = [];
-            foreach($order->get('line_items', []) as $id => $attrs) {
+            foreach ($order->get('line_items', []) as $id => $attrs) {
                 $item = (new static($attrs))->setOrder($order);
                 if (!is_numeric($id)) {
                     $item->setHash($id);
@@ -127,9 +162,9 @@ class QueryOrderLineItem extends ParamsBag
      *
      * @return int
      */
-    public function getDurationLength(): int
+    public function getLimitedLength(): int
     {
-        return (int)$this->get('duration_length', 0);
+        return (int)$this->get('limited_length', 0);
     }
 
     /**
@@ -137,9 +172,9 @@ class QueryOrderLineItem extends ParamsBag
      *
      * @return string
      */
-    public function getDurationUnity(): string
+    public function getLimitedUnity(): string
     {
-        return (string)$this->get('duration_unity', 'year');
+        return (string)$this->get('limited_unity', 'year');
     }
 
     /**
@@ -180,10 +215,20 @@ class QueryOrderLineItem extends ParamsBag
     public function getOrder(): ?QueryOrder
     {
         if (is_null($this->order)) {
-            $this->order = QueryOrder::createFromId((int)$this->get('order_id', 0));
+            $this->order = QueryOrder::createFromId($this->getOrderId());
         }
 
         return $this->order;
+    }
+
+    /**
+     * Récupération de l'identifiant de qualification de la  commande associée.
+     *
+     * @return int
+     */
+    public function getOrderId(): int
+    {
+        return $this->order ? $this->order->getId() : (int)$this->get('order_id', 0);
     }
 
     /**
@@ -211,9 +256,37 @@ class QueryOrderLineItem extends ParamsBag
      *
      * @return int
      */
-    public function getRenewableDays(): int
+    public function getRenewDays(): int
     {
-        return (int)$this->get('renewable_days', 0);
+        return (int)$this->get('renew_days', 0);
+    }
+
+    /**
+     * Vérification de l'activation de l'engagement.
+     *
+     * @return bool
+     */
+    public function isLimitedEnabled(): bool
+    {
+        if ($limited = $this->get('limited')) {
+            return filter_var($limited, FILTER_VALIDATE_BOOLEAN);
+        } else {
+            return $this->getOffer()->isLimitedEnabled();
+        }
+    }
+
+    /**
+     * Vérification de l'activation du ré-engagement.
+     *
+     * @return bool
+     */
+    public function isRenewEnabled(): bool
+    {
+        if ($renewable = $this->get('renewable')) {
+            return filter_var($renewable, FILTER_VALIDATE_BOOLEAN);
+        } else {
+            return $this->getOffer()->isRenewEnabled();
+        }
     }
 
     /**
@@ -223,7 +296,7 @@ class QueryOrderLineItem extends ParamsBag
      */
     public function isRenewNotify(): bool
     {
-        return (bool)$this->get('renew_notification', false);
+        return (bool)$this->get('renew_notify', false);
     }
 
     /**

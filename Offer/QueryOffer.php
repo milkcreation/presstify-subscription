@@ -49,13 +49,13 @@ class QueryOffer extends BaseQueryPost
      *
      * @return string|null
      */
-    public function getDurationHtml(): ?string
+    public function getLimitedHtml(): ?string
     {
-        if (!$length = $this->getDurationLength()) {
+        if (!$length = $this->getLimitedLength()) {
             return null;
         }
 
-        switch ($this->getDurationUnity()) {
+        switch ($this->getLimitedUnity()) {
             default :
             case 'year' :
                 return sprintf(_n('%d an', '%d ans', $length, 'tify'), $length);
@@ -70,26 +70,6 @@ class QueryOffer extends BaseQueryPost
     }
 
     /**
-     * Récupération de la durée de l'abonnement.
-     *
-     * @return int
-     */
-    public function getDurationLength(): int
-    {
-        return (int)$this->getMetaSingle('_duration_length', 0);
-    }
-
-    /**
-     * Récupération de l'unité de durée de l'abonnement.
-     *
-     * @return string
-     */
-    public function getDurationUnity(): string
-    {
-        return $this->getMetaSingle('_duration_unity', 'year');
-    }
-
-    /**
      * Récupération de l'intitulé de qualification.
      *
      * @return string
@@ -97,6 +77,30 @@ class QueryOffer extends BaseQueryPost
     public function getLabel(): string
     {
         return (string)$this->getMetaSingle('_label', $this->getTitle());
+    }
+
+    /**
+     * Récupération de la durée de l'abonnement.
+     *
+     * @return int
+     */
+    public function getLimitedLength(): int
+    {
+        return (int)($this->getMetaSingle('_limited_length', 0)
+            ?: $this->subscription()->settings()->getOfferLimitedLength()
+        );
+    }
+
+    /**
+     * Récupération de l'unité de durée de l'abonnement.
+     *
+     * @return string
+     */
+    public function getLimitedUnity(): string
+    {
+        return (string)$this->getMetaSingle(
+            '_limited_unity', $this->subscription()->settings()->getOfferLimitedUnity()
+        );
     }
 
     /**
@@ -243,9 +247,9 @@ class QueryOffer extends BaseQueryPost
      *
      * @return int
      */
-    public function getRenewableDays(): int
+    public function getRenewDays(): int
     {
-        return (int)$this->getMetaSingle('_renewable_days', 0);
+        return (int)($this->getMetaSingle('_renew_days', 0) ? : $this->subscription()->settings()->getOfferRenewDays());
     }
 
     /**
@@ -297,6 +301,19 @@ class QueryOffer extends BaseQueryPost
         return ($tax = $this->getTax()) ? $tax / 100 : 0;
     }
 
+    /**
+     * Vérification de l'activation de l'engagement.
+     *
+     * @return bool
+     */
+    public function isLimitedEnabled(): bool
+    {
+        if ($limited = $this->getMetaSingle('_limited')) {
+            return filter_var($limited, FILTER_VALIDATE_BOOLEAN);
+        } else {
+            return $this->subscription()->settings()->isOfferLimitedEnabled();
+        }
+    }
 
     /**
      * Vérifie si le produit peut être commandé.
@@ -309,13 +326,27 @@ class QueryOffer extends BaseQueryPost
     }
 
     /**
+     * Vérification de l'activation du ré-engagement.
+     *
+     * @return bool
+     */
+    public function isRenewEnabled(): bool
+    {
+        if ($renewable = $this->getMetaSingle('_renewable')) {
+            return filter_var($renewable, FILTER_VALIDATE_BOOLEAN);
+        } else {
+            return $this->subscription()->settings()->isOfferRenewEnabled();
+        }
+    }
+
+    /**
      * Vérification de l'envoi d'un mail de notification lors de la période de ré-engagement.
      *
      * @return bool
      */
     public function isRenewNotify(): bool
     {
-        return filter_var($this->getMetaSingle('_renew_notification'), FILTER_VALIDATE_BOOLEAN);
+        return filter_var($this->getMetaSingle('_renew_notify'), FILTER_VALIDATE_BOOLEAN);
     }
 
     /**

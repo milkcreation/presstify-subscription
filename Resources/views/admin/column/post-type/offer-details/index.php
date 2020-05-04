@@ -16,11 +16,11 @@
         <span><?php echo $offer->getSku() ?: '--'; ?></span>
     </dd>
 
-    <?php if ($settings->isOfferLimitationEnabled()) : ?>
+    <?php if ($settings->isOfferLimitedEnabled()) : ?>
     <dt><?php _e('Engagement', 'tify'); ?></dt>
     <dd>
         <label><?php _e('Durée', 'tify'); ?> : </label>
-        <span><?php echo $offer->getDurationHtml(); ?></span>
+        <span><?php echo $offer->getLimitedHtml(); ?></span>
     </dd>
     <?php endif; ?>
 
@@ -30,8 +30,8 @@
         <label><?php _e('Possible', 'tify'); ?> : </label>
         <span>
             <?php printf(
-                _nx('%d jour avant', '%d jours avant', $offer->getRenewableDays(), 'tify'),
-                $offer->getRenewableDays()
+                _nx('%d jour avant', '%d jours avant', $offer->getRenewDays(), 'tify'),
+                $offer->getRenewDays()
             ); ?>
         </span>
     </dd>

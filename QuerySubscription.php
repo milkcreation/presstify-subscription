@@ -18,24 +18,24 @@ class QuerySubscription extends BaseQueryPost
     protected static $postType = 'subscription';
 
     /**
-     * Cartographie des clés d'indice de métadonnées associées à la commande.
-     * @var array
+     * Cartographie des métadonnées associées à l'abonnement.
+     * @var string[]
      */
-    protected $metasMap = [
-        'customer_email'     => '_customer_email',
-        'customer_id'        => '_customer_id',
-        'duration_length'    => '_duration_length',
-        'duration_unity'     => '_duration_unity',
-        'end_date'           => '_end_date',
-        'imported'           => '_imported',
-        'offer_id'           => '_offer_id',
-        'offer_label'        => '_offer_label',
-        'order_id'           => '_order_id',
-        'limited'            => '_limited',
-        'renewable'          => '_renewable',
-        'renewable_days'     => '_renewable_days',
-        'renew_notification' => '_renew_notification',
-        'start_date'         => '_start_date',
+    protected static $metasMap = [
+        'customer_email' => '_customer_email',
+        'customer_id'    => '_customer_id',
+        'end_date'       => '_end_date',
+        'imported'       => '_imported',
+        'offer_id'       => '_offer_id',
+        'offer_label'    => '_offer_label',
+        'order_id'       => '_order_id',
+        'limited'        => '_limited',
+        'limited_length' => '_limited_length',
+        'limited_unity'  => '_limited_unity',
+        'renewable'      => '_renewable',
+        'renew_days'     => '_renew_days',
+        'renew_notify'   => '_renew_notify',
+        'start_date'     => '_start_date',
     ];
 
     /**
@@ -53,6 +53,18 @@ class QuerySubscription extends BaseQueryPost
     }
 
     /**
+     * Définition de metadonnées complémentaires.
+     *
+     * @param string[] $map
+     *
+     * @return void
+     */
+    public static function setMetasMap(array $map): void
+    {
+        static::$metasMap = array_merge($map, static::$metasMap);
+    }
+
+    /**
      * Récupération de l'email de contact du client associé.
      *
      * @return string
@@ -67,13 +79,13 @@ class QuerySubscription extends BaseQueryPost
      *
      * @return string|null
      */
-    public function getDurationHtml(): ?string
+    public function getLimitedHtml(): ?string
     {
-        if (!$length = $this->getDurationLength()) {
+        if (!$length = $this->getLimitedLength()) {
             return null;
         }
 
-        switch ($this->getDurationUnity()) {
+        switch ($this->getLimitedUnity()) {
             default :
             case 'year' :
                 return sprintf(_n('%d an', '%d ans', $length, 'tify'), $length);
@@ -92,9 +104,9 @@ class QuerySubscription extends BaseQueryPost
      *
      * @return int
      */
-    public function getDurationLength(): int
+    public function getLimitedLength(): int
     {
-        return (int)$this->get('duration_length', 0);
+        return (int)$this->get('limited_length', 0);
     }
 
     /**
@@ -102,9 +114,9 @@ class QuerySubscription extends BaseQueryPost
      *
      * @return string
      */
-    public function getDurationUnity(): string
+    public function getLimitedUnity(): string
     {
-        return (string)$this->get('duration_unity') ?: 'year';
+        return (string)$this->get('limited_unity') ?: 'year';
     }
 
     /**
@@ -142,9 +154,9 @@ class QuerySubscription extends BaseQueryPost
      *
      * @return int
      */
-    public function getRenewableDays(): int
+    public function getRenewDays(): int
     {
-        return (int)$this->get('renewable_days', 0) ?: 0;
+        return (int)$this->get('renew_days', 0) ?: 0;
     }
 
     /**
@@ -158,7 +170,7 @@ class QuerySubscription extends BaseQueryPost
             return null;
         }
 
-        $date->subDays($this->getRenewableDays());
+        $date->subDays($this->getRenewDays());
 
         return $date;
     }
@@ -204,7 +216,7 @@ class QuerySubscription extends BaseQueryPost
      */
     public function getMetaMapped($key = null, $default = null)
     {
-        $metaMapKeys = array_keys($this->metasMap);
+        $metaMapKeys = array_keys(static::$metasMap);
 
         if (is_null($key)) {
             return $this->only($metaMapKeys);
@@ -264,12 +276,12 @@ class QuerySubscription extends BaseQueryPost
      *
      * @return bool
      */
-    public function isLimitationEnabled(): bool
+    public function isLimitedEnabled(): bool
     {
         if ($limited = $this->get('limited')) {
             return filter_var($limited, FILTER_VALIDATE_BOOLEAN);
         } else {
-            return $this->subscription()->settings()->isOfferLimitationEnabled();
+            return $this->subscription()->settings()->isOfferLimitedEnabled();
         }
     }
 
@@ -294,7 +306,7 @@ class QuerySubscription extends BaseQueryPost
      */
     public function isRenewNotify(): bool
     {
-        return filter_var($this->get('renew_notification'), FILTER_VALIDATE_BOOLEAN);
+        return filter_var($this->get('renew_notify'), FILTER_VALIDATE_BOOLEAN);
     }
 
     /**
@@ -310,7 +322,7 @@ class QuerySubscription extends BaseQueryPost
             return false;
         }
 
-        $end->subDays($this->getRenewableDays());
+        $end->subDays($this->getRenewDays());
 
         if (is_null($date)) {
             $date = DateTime::now(DateTime::getGlobalTimeZone());
@@ -330,7 +342,7 @@ class QuerySubscription extends BaseQueryPost
     public function mapMeta($key = null, ?string $metaKey = null): self
     {
         if (is_null($key)) {
-            $keys = $this->metasMap;
+            $keys = static::$metasMap;
         } else {
             $keys = is_array($key) ? $key : [$key => $metaKey];
         }
@@ -375,7 +387,7 @@ class QuerySubscription extends BaseQueryPost
 
         $postdata['post_title'] = sprintf(__('Abonnement n°%s', 'tify'), $this->getId());
 
-        foreach ($this->metasMap as $key => $metaKey) {
+        foreach (static::$metasMap as $key => $metaKey) {
             $postdata['meta'][$metaKey] = $this->get($key);
         }
 

@@ -66,27 +66,42 @@
     <?php endif; ?>
 </table>
 
-<?php if ($settings->isOfferLimitationEnabled()) : ?>
+<?php if ($settings->isOfferLimitedEnabled()) : ?>
 <h3 class="Form-title"><?php _e('Engagement', 'tify'); ?></h3>
 <table class="Form-table">
+    <tr>
+        <th><?php _e('Activation', 'tify'); ?></th>
+        <td>
+            <?php echo field('toggle-switch', [
+                'name'  => '_limited',
+                'value' => $offer->isLimitedEnabled() ? 'on' : 'off',
+            ]); ?>
+        </td>
+    </tr>
+</table>
+<table class="Form-table LimitedEnabled<?php echo $offer->isLimitedEnabled() ? '' : ' hidden'; ?>">
     <tr>
         <th><?php _e('Durée de l\'abonnement', 'tify'); ?></th>
         <td>
             <?php echo field('number', [
                 'attrs' => [
                     'min' => 0,
+                    'style' => 'width:80px;vertical-align:middle;',
                 ],
-                'name'  => '_duration_length',
-                'value' => $offer->getDurationLength()
+                'name'  => '_limited_length',
+                'value' => $offer->getLimitedLength()
             ]); ?>
             <?php echo field('select-js', [
+                'attrs'   => [
+                    'style' => 'display:inline-block;vertical-align:middle;',
+                ],
                 'choices' => [
                     'year'  => __('Année(s)', 'tify'),
                     'month' => __('Mois', 'tify'),
                     'day'   => __('Jour(s)', 'tify'),
                 ],
-                'name'    => '_duration_unity',
-                'value' => $offer->getDurationUnity()
+                'name'    => '_limited_unity',
+                'value' => $offer->getLimitedUnity()
             ]); ?>
         </td>
     </tr>
@@ -95,7 +110,18 @@
 
 <?php if ($settings->isOfferRenewEnabled()) : ?>
 <h3 class="Form-title"><?php _e('Ré-engagement', 'tify'); ?></h3>
-<table class="Form-table">
+    <table class="Form-table">
+        <tr>
+            <th><?php _e('Activation', 'tify'); ?></th>
+            <td>
+                <?php echo field('toggle-switch', [
+                    'name'  => '_renewable',
+                    'value' => $offer->isRenewEnabled() ? 'on' : 'off',
+                ]); ?>
+            </td>
+        </tr>
+    </table>
+<table class="Form-table LimitedEnabled<?php echo $offer->isRenewEnabled() ? '' : ' hidden'; ?>">
     <tr>
         <th><?php _e('Possible à partir de', 'tify'); ?></th>
         <td>
@@ -103,8 +129,8 @@
                 'attrs' => [
                      'min' => 0,
                 ],
-                'name'  => '_renewable_days',
-                'value' => $offer->getRenewableDays()
+                'name'  => '_renew_days',
+                'value' => $offer->getRenewDays()
             ])); ?>
         </td>
     </tr>
@@ -112,8 +138,8 @@
         <th><?php _e('Envoyer une notification par mail à l\'abonné', 'tify'); ?></th>
         <td>
             <?php echo field('toggle-switch', [
-                'name'  => '_renew_notification',
-                'value' => $offer->isRenewNotify() === 'on' ? 'on': 'off'
+                'name'  => '_renew_notify',
+                'value' => $offer->isRenewNotify() ? 'on': 'off'
             ]); ?>
         </td>
     </tr>

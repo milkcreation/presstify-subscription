@@ -20,12 +20,12 @@ use tiFy\Plugins\Subscription\{
 };
 use tiFy\Support\{ParamsBag, Proxy\AbstractProxy};
 use tiFy\Wordpress\Contracts\Query\QueryUser;
-use WP_Post, WP_Query;
+use WP_Post, WP_User, WP_Query;
 
 /**
  * @method static mixed|ParamsBag config(string|array|null $key = null, mixed $default = null)
  * @method static SubscriptionController|null controller()
- * @method static SubscriptionCustomer|null customer(string|int|QueryUser|null $id)
+ * @method static SubscriptionCustomer|null customer(string|int|QueryUser|WP_User|null $id)
  * @method static Export|null export()
  * @method static QuerySubscription[]|[] fetch(WP_Query|array|null $query)
  * @method static SubscriptionOrderForm form()

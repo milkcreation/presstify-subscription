@@ -4,7 +4,7 @@ namespace tiFy\Plugins\Subscription;
 
 use Exception;
 use tiFy\Contracts\Form\FactoryField;
-use tiFy\Plugins\Subscription\Order\QueryOrder;
+use tiFy\Plugins\Subscription\Order\{QueryOrder, QueryOrderLineItem};
 use tiFy\Contracts\Http\{RedirectResponse, Response};
 use tiFy\Routing\BaseController;
 use tiFy\Support\DateTime;
@@ -33,7 +33,7 @@ class SubscriptionController extends BaseController
                     'Impossible de récupérer la commande.', 'tify'
                 ), (string)$order_key)
             );
-        } elseif ($order->getCustomerId() !== $this->subscription()->customer()->getId()) {
+        } elseif (is_user_logged_in() && ($order->getCustomerId() !== $this->subscription()->customer()->getId())) {
             throw new Exception(sprintf(__(
                     '<b>Code erreur : order-unallowed--%s|%s</b><br>' .
                     'Vous n\'êtes pas autorisé à accéder à cette commande.', 'tify'
@@ -68,7 +68,7 @@ class SubscriptionController extends BaseController
      *
      * @throws Exception
      */
-    protected function createOrder(array $data) :QueryOrder
+    protected function createOrder(array $data): QueryOrder
     {
         $subscr = $this->subscription();
         $session = $subscr->session();
@@ -88,33 +88,37 @@ class SubscriptionController extends BaseController
             $qty = 1;
 
             $order->createLineItem([
-                'duration_length'    => $offer->getDurationLength(),
-                'duration_unity'     => $offer->getDurationUnity(),
-                'name'               => $offer->getName(),
-                'label'              => $offer->getLabel(),
-                'order_id'           => $order->getId(),
-                'price'              => $offer->getPrice(),
-                'offer_id'           => $offer->getId(),
-                'quantity'           => $qty,
-                'sku'                => $offer->getSku(),
-                'subtotal'           => $offer->getPriceWithTax($qty),
-                'subtotal_tax'       => $offer->getPriceTax($qty),
-                'renewable_days'     => $offer->getRenewableDays(),
-                'renew_notification' => $offer->isRenewNotify(),
-                'total'              => $offer->getPriceWithTax($qty),
-                'total_tax'          => $offer->getPriceTax($qty),
-                'type'               => 'offer',
+                'name'           => $offer->getName(),
+                'label'          => $offer->getLabel(),
+                'limited'        => $offer->isLimitedEnabled() ? 'on' : 'off',
+                'limited_length' => $offer->getLimitedLength(),
+                'limited_unity'  => $offer->getLimitedUnity(),
+                'order_id'       => $order->getId(),
+                'price'          => $offer->getPrice(),
+                'offer_id'       => $offer->getId(),
+                'quantity'       => $qty,
+                'sku'            => $offer->getSku(),
+                'subtotal'       => $offer->getPriceWithTax($qty),
+                'subtotal_tax'   => $offer->getPriceTax($qty),
+                'renewable'      => $offer->isRenewEnabled() ? 'on' : 'off',
+                'renew_days'     => $offer->getRenewDays(),
+                'renew_notify'   => $offer->isRenewNotify(),
+                'total'          => $offer->getPriceWithTax($qty),
+                'total_tax'      => $offer->getPriceTax($qty),
+                'type'           => 'offer',
             ]);
         } else {
             throw new Exception(__('Aucune offre trouvée, ou l\'offre choisie n\'est plus disponible.', 'tify'));
         }
 
         // - Association des données de transaction.
+        $email = $data['billing_email'] ?? '';
+
         $order->set([
             'created_via'          => 'checkout',
             'currency'             => $subscr->settings()->getCurrency(),
-            'customer_id'          => $subscr->customer()->getId(),
-            'customer_email'       => $data['billing_email'] ?? '',
+            'customer_id'          => $subscr->customer(get_current_user_id() ?: $email)->getId(),
+            'customer_email'       => $email,
             'customer_ip_address'  => Request::ip(),
             'customer_user_agent'  => Request::header('User-Agent'),
             'payment_method'       => $gateway->getName(),
@@ -164,41 +168,60 @@ class SubscriptionController extends BaseController
      */
     protected function completeOrder(string $order_key): void
     {
-        if (($order = $this->subscription()->order()->get($order_key)) && !$order->isStatusPaymentComplete()) {
-            try {
-                $subscr = $order->createSubscription();
+        $subscr = $this->subscription();
+
+        if (($order = $subscr->order()->get($order_key)) && !$order->isStatusPaymentComplete()) {
+            if ($order->isNeedShipping()) {
+                $order->set('status', 'processing');
+            } else {
+                $order->set('status', 'completed');
+                $order->set('date_completed', (new DateTime())->utc('U'));
+            }
+
+            $order->update();
+
+            if (!$line = $order->getLineItems()[0] ?: null) {
+                $message = __('La commande n\'a aucune offre d\'abonnement à créer.', 'tify');
+                $order->addNote($message);
+                $this->subscription()->log()->addInfo($message, ['order' => $order->all()]);
+            } elseif (!$subscription = $order->getSubscription()) {
+                try {
+                    $subscription = $line->createSubscription($this->getSubscriptionData($line));
+                } catch (Exception $e) {
+                    $message = __('Impossible de créer un nouvel abonnement.', 'tify');
+                    $order->addNote($message);
+                    $this->subscription()->log()->addError($message, ['order' => $order->all()]);
+                }
+            }
+
+            if (isset($subscription)) {
+                $order->set('subscription_id', $subscription->getId())->update();
 
                 $message = sprintf(__(
-                    'L\'abonnement [#%d] a été créé et associé à la commande.', 'tify'
-                ), $subscr->getId());
+                    'L\'abonnement n°[#%d] a été créé et associé à la commande.', 'tify'), $subscription->getId()
+                );
                 $order->addNote($message);
                 $this->subscription()->log()->addSuccess($message, [
                     'order'        => $order->all(),
-                    'subscription' => $subscr->all()
+                    'subscription' => $subscription->all(),
                 ]);
-
-                if ($order->isNeedShipping()) {
-                    $order->set('status', 'processing');
-                } else {
-                    $order->set('status', 'completed');
-                    $order->set('date_completed', (new DateTime())->utc('U'));
-                }
-
-                $order->update();
-            } catch (Exception $e) {
-                $subscr = null;
-
-                switch ($e->getMessage()) {
-                    default :
-                        $message = __('Le processus de création de l\'abonnement n\'a pu aboutir.', 'tify');
-                        $order->addNote($message);
-                        $this->subscription()->log()->addError($message, ['order' => $order->all()]);
-                        break;
-                }
             }
 
             $order->getMail()->send();
         }
+    }
+    /**/
+
+    /**
+     * Données de création de l'abonnement.
+     *
+     * @param QueryOrderLineItem $line
+     *
+     * @return array
+     */
+    protected function getSubscriptionData(QueryOrderLineItem $line): array
+    {
+        return [];
     }
     /**/
 
@@ -453,6 +476,19 @@ class SubscriptionController extends BaseController
             }
 
             if (!$form->hasError()) {
+                $customer = $this->subscription()->customer(get_current_user_id() ?: $email);
+
+                if (!$customer->canSubscribe()) {
+                    $form->error(sprintf(
+                        __('Une autre souscription associée à [%s] existe déjà pour la période en cours.', 'theme'),
+                        is_user_logged_in()
+                            ? wp_get_current_user()->display_name . '/' . wp_get_current_user()->user_email
+                            : $email
+                    ));
+                }
+            }
+
+            if (!$form->hasError()) {
                 $data = $form->request()->all();
             }
         }
@@ -503,6 +539,17 @@ class SubscriptionController extends BaseController
             $this->set('order', $order = $this->checkOrder($order_key));
         } catch (Exception $e) {
             $this->subscription()->notify($e->getMessage());
+
+            return $this->subscription()->route('payment-error')->redirect([$order_key]);
+        }
+
+        if (!$order->getCustomer()->canSubscribe()) {
+            $this->subscription()->notify(sprintf(
+                __('Une autre souscription associée à [%s] existe déjà pour la période en cours.', 'theme'),
+                is_user_logged_in()
+                    ? wp_get_current_user()->display_name . '/' . wp_get_current_user()->user_email
+                    : $order->getCustomerEmail()
+            ));
 
             return $this->subscription()->route('payment-error')->redirect([$order_key]);
         }
