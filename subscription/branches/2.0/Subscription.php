@@ -27,7 +27,7 @@ use WP_Post, WP_User, WP_Query;
  * @desc Extension PresstiFy de gestion d'abonnements.
  * @author Jordy Manner <jordy@milkcreation.fr>
  * @package tiFy\Plugins\Subscription
- * @version 2.0.2
+ * @version 2.0.3
  *
  * USAGE :
  * Activation

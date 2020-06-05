@@ -183,14 +183,14 @@ class SubscriptionController extends BaseController
             if (!$line = $order->getLineItems()[0] ?: null) {
                 $message = __('La commande n\'a aucune offre d\'abonnement à créer.', 'tify');
                 $order->addNote($message);
-                $this->subscription()->log()->addInfo($message, ['order' => $order->all()]);
+                $this->subscription()->log()->info($message, ['order' => $order->all()]);
             } elseif (!$subscription = $order->getSubscription()) {
                 try {
                     $subscription = $line->createSubscription($this->getSubscriptionData($line));
                 } catch (Exception $e) {
                     $message = __('Impossible de créer un nouvel abonnement.', 'tify');
                     $order->addNote($message);
-                    $this->subscription()->log()->addError($message, ['order' => $order->all()]);
+                    $this->subscription()->log()->error($message, ['order' => $order->all()]);
                 }
             }
 
@@ -201,7 +201,7 @@ class SubscriptionController extends BaseController
                     'L\'abonnement n°[#%d] a été créé et associé à la commande.', 'tify'), $subscription->getId()
                 );
                 $order->addNote($message);
-                $this->subscription()->log()->addSuccess($message, [
+                $this->subscription()->log()->success($message, [
                     'order'        => $order->all(),
                     'subscription' => $subscription->all(),
                 ]);
@@ -293,7 +293,7 @@ class SubscriptionController extends BaseController
     public function handleIpn(string $order_key): Response
     {
         if (!$order = $this->subscription()->order()->get($order_key)) {
-            $this->subscription()->log()->addError(sprintf(
+            $this->subscription()->log()->error(sprintf(
                 __('Notification de paiement instantané en échec de la commande [%s] >> [%s]', 'tify'),
                 $order_key,
                 __('Commande indisponible.', 'tify')
@@ -301,7 +301,7 @@ class SubscriptionController extends BaseController
 
             return $this->response('KO', 400);
         } elseif (!$gateway = $order->getPaymentGateway()) {
-            $this->subscription()->log()->addError(sprintf(
+            $this->subscription()->log()->error(sprintf(
                 __('Notification de paiement instantané en échec de la commande [%s] >> [%s]', 'tify'),
                 $order_key,
                 __('Plateforme de paiement indisponible.', 'tify')
