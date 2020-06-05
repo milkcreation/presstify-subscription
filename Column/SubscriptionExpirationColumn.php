@@ -4,7 +4,6 @@ namespace tiFy\Plugins\Subscription\Column;
 
 use tiFy\Plugins\Subscription\QuerySubscription;
 use tiFy\Column\AbstractColumnDisplayPostTypeController;
-use tiFy\Support\Proxy\Partial;
 
 class SubscriptionExpirationColumn extends AbstractColumnDisplayPostTypeController
 {
