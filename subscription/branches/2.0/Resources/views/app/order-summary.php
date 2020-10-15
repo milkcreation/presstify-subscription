@@ -4,7 +4,7 @@
  * @var tiFy\Plugins\Subscription\Order\QueryOrder $order
  */
 ?>
-<div class="OrderSummary">
+<div class="SubscriptionContent SubscriptionContent--summary">
     <ul>
         <?php foreach ($order->getLineItems() as $line) : ?>
             <li>

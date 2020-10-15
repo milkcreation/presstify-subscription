@@ -253,6 +253,18 @@ class QueryOffer extends BaseQueryPost
     }
 
     /**
+     * Récupération du nombre de jours avant l'expiration pour l'expédition du mail de rappel.
+     *
+     * @return int
+     */
+    public function getRenewNotifyDays(): int
+    {
+        return (int)($this->getMetaSingle('_renew_notify_days', 0)
+            ? : $this->subscription()->settings()->getRenewNotifyDays()
+        );
+    }
+
+    /**
      * Récupération de l'unité de gestion de stock (EAN13, Réf ...).
      *
      * @return string
@@ -344,9 +356,12 @@ class QueryOffer extends BaseQueryPost
      *
      * @return bool
      */
-    public function isRenewNotify(): bool
+    public function isRenewNotifyEnabled(): bool
     {
-        return filter_var($this->getMetaSingle('_renew_notify'), FILTER_VALIDATE_BOOLEAN);
+        return filter_var(
+            $this->getMetaSingle('_renew_notify', $this->subscription()->settings()->isRenewNotifyEnabled()),
+            FILTER_VALIDATE_BOOLEAN
+        );
     }
 
     /**

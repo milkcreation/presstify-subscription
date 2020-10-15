@@ -19,9 +19,6 @@ class SubscriptionOrderForm extends BaseFormFactory
      */
     public function boot(): void
     {
-        $values = (($order = $this->subscription()->session()->getOrder()) && !$order->isStatusPaymentComplete())
-            ? $order->get('subscription_form', []) : [];
-
         // - Méthode de paiement disponibles.
         $gateway_choices = [];
         $payment_method = [];
@@ -36,7 +33,6 @@ class SubscriptionOrderForm extends BaseFormFactory
                     'title'   => __('Choix de la plateforme de paiement', 'tify'),
                     'type'    => 'radio-collection',
                     'choices' => $gateway_choices,
-                    'value'   => $values['payment_method'] ?? '',
                 ];
             } else {
                 $payment_method = [
@@ -64,7 +60,6 @@ class SubscriptionOrderForm extends BaseFormFactory
                     'title'   => __('Choix de l\'offre', 'tify'),
                     'type'    => 'radio-collection',
                     'choices' => $offer_choices,
-                    'value'   => $values['offer'] ?? '',
                 ],
                 'billing-title'      => [
                     'type'  => 'html',
@@ -74,48 +69,40 @@ class SubscriptionOrderForm extends BaseFormFactory
                     'required' => true,
                     'title'    => __('Nom de famille', 'tify'),
                     'type'     => 'text',
-                    'value'    => $values['billing_lastname'] ?? '',
                 ],
                 'billing_firstname'  => [
                     'required' => true,
                     'title'    => __('Prénom', 'tify'),
                     'type'     => 'text',
-                    'value'    => $values['billing_firstname'] ?? '',
                 ],
                 'billing_address1'   => [
                     'required' => true,
                     'title'    => __('Adresse postale', 'tify'),
                     'type'     => 'text',
-                    'value'    => $values['billing_address1'] ?? '',
                 ],
                 'billing_address2'   => [
                     'title' => __('Complément d\'adresse', 'tify'),
                     'type'  => 'text',
-                    'value' => $values['billing_address2'] ?? '',
                 ],
                 'billing_postcode'   => [
                     'required' => true,
                     'title'    => __('Code postal', 'tify'),
                     'type'     => 'text',
-                    'value'    => $values['billing_postcode'] ?? '',
                 ],
                 'billing_city'       => [
                     'required' => true,
                     'title'    => __('Ville', 'tify'),
-                    'type'     => 'text',
-                    'value'    => $values['billing_city'] ?? '',
+                    'type'     => 'text'
                 ],
                 'billing_phone'      => [
                     'required' => true,
                     'title'    => __('Numéro de téléphone', 'tify'),
-                    'type'     => 'text',
-                    'value'    => $values['billing_phone'] ?? '',
+                    'type'     => 'text'
                 ],
                 'billing_email'      => [
                     'required' => true,
                     'title'    => __('Adresse de messagerie', 'tify'),
-                    'type'     => 'text',
-                    'value'    => $values['billing_email'] ?? '',
+                    'type'     => 'text'
                 ],
                 'shipping-title'     => [
                     'type'  => 'html',
@@ -125,42 +112,36 @@ class SubscriptionOrderForm extends BaseFormFactory
                     'required' => true,
                     'group'    => 'shipping',
                     'title'    => __('Nom de famille', 'tify'),
-                    'type'     => 'text',
-                    'value'    => $values['shipping_lastname'] ?? '',
+                    'type'     => 'text'
                 ],
                 'shipping_firstname' => [
                     'required' => true,
                     'group'    => 'shipping',
                     'title'    => __('Prénom', 'tify'),
-                    'type'     => 'text',
-                    'value'    => $values['shipping_firstname'] ?? '',
+                    'type'     => 'text'
                 ],
                 'shipping_address1'  => [
                     'required' => true,
                     'group'    => 'shipping',
                     'title'    => __('Adresse postale', 'tify'),
-                    'type'     => 'text',
-                    'value'    => $values['shipping_address1'] ?? '',
+                    'type'     => 'text'
                 ],
                 'shipping_address2'  => [
                     'group' => 'shipping',
                     'title' => __('Complément d\'adresse', 'tify'),
-                    'type'  => 'text',
-                    'value' => $values['shipping_address2'] ?? '',
+                    'type'  => 'text'
                 ],
                 'shipping_postcode'  => [
                     'required' => true,
                     'group'    => 'shipping',
                     'title'    => __('Code postal', 'tify'),
-                    'type'     => 'text',
-                    'value'    => $values['shipping_postcode'] ?? '',
+                    'type'     => 'text'
                 ],
                 'shipping_city'      => [
                     'required' => true,
                     'group'    => 'shipping',
                     'title'    => __('Ville', 'tify'),
-                    'type'     => 'text',
-                    'value'    => $values['shipping_city'] ?? '',
+                    'type'     => 'text'
                 ],
                 'legend'             => [
                     'group'   => 'submit',

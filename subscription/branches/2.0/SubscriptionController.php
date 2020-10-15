@@ -8,7 +8,7 @@ use tiFy\Plugins\Subscription\Order\{QueryOrder, QueryOrderLineItem};
 use tiFy\Contracts\Http\{RedirectResponse, Response};
 use tiFy\Routing\BaseController;
 use tiFy\Support\DateTime;
-use tiFy\Support\Proxy\Request;
+use tiFy\Support\Proxy\{Partial, Request};
 use tiFy\Validation\Validator as v;
 
 class SubscriptionController extends BaseController
@@ -102,7 +102,7 @@ class SubscriptionController extends BaseController
                 'subtotal_tax'   => $offer->getPriceTax($qty),
                 'renewable'      => $offer->isRenewEnabled() ? 'on' : 'off',
                 'renew_days'     => $offer->getRenewDays(),
-                'renew_notify'   => $offer->isRenewNotify(),
+                'renew_notify'   => $offer->isRenewNotifyEnabled(),
                 'total'          => $offer->getPriceWithTax($qty),
                 'total_tax'      => $offer->getPriceTax($qty),
                 'type'           => 'offer',
@@ -113,19 +113,23 @@ class SubscriptionController extends BaseController
 
         // - Association des données de transaction.
         $email = $data['billing_email'] ?? '';
+        $firstname = $data['billing_firstname'] ?? '';
+        $lastname = $data['billing_lastname'] ?? '';
 
         $order->set([
-            'created_via'          => 'checkout',
-            'currency'             => $subscr->settings()->getCurrency(),
-            'customer_id'          => $subscr->customer(get_current_user_id() ?: $email)->getId(),
-            'customer_email'       => $email,
-            'customer_ip_address'  => Request::ip(),
-            'customer_user_agent'  => Request::header('User-Agent'),
-            'payment_method'       => $gateway->getName(),
-            'payment_method_title' => $gateway->getLabel(),
-            'prices_include_tax'   => $subscr->settings()->isPricesIncludeTax(),
-            'total'                => $order->calculateTotal(),
-            'total_tax'            => $order->calculateTotalTax(),
+            'created_via'           => 'checkout',
+            'currency'              => $subscr->settings()->getCurrency(),
+            'customer_display_name' => join(' ', array_filter([$firstname, $lastname])),
+            'customer_email'        => $email,
+            'customer_id'           => $subscr->customer(get_current_user_id() ?: $email)->getId(),
+            'customer_ip_address'   => Request::ip(),
+            'customer_user_agent'   => Request::header('User-Agent'),
+            'order_number'          => $this->subscription()->order()->generateUniqueNumber(null, $order),
+            'payment_method'        => $gateway->getName(),
+            'payment_method_title'  => $gateway->getLabel(),
+            'prices_include_tax'    => $subscr->settings()->isPricesIncludeTax(),
+            'total'                 => $order->calculateTotal(),
+            'total_tax'             => $order->calculateTotalTax(),
         ]);
 
         // - Association des données d'abonnement.
@@ -207,7 +211,13 @@ class SubscriptionController extends BaseController
                 ]);
             }
 
-            $order->getMail()->send();
+            if ($confirm = $order->getConfirmationMail()) {
+                $confirm->send();
+            }
+
+            if ($notify = $order->getNotificationMail()) {
+                $notify->send();
+            }
         }
     }
     /**/
@@ -395,6 +405,12 @@ class SubscriptionController extends BaseController
     {
         $form = $this->subscription()->form()->prepare();
 
+        try {
+            $this->orderFormRenew($form);
+        } catch(Exception $e) {
+            return $this->redirect($this->subscription()->route('order-form')->getUrl());
+        }
+
         if (Request::isMethod('post')) {
             if ($data = $this->orderFormValidate($form)) {
                 try {
@@ -407,11 +423,37 @@ class SubscriptionController extends BaseController
             }
         }
 
-        $this->set(compact('form'));
+        $this->set(['content' => $form]);
 
         return $this->viewOrderForm($this->all());
     }
     /**/
+
+    /**
+     * Traitement du renouvellement d'abonnement.
+     *
+     * @param SubscriptionOrderForm $form
+     *
+     * @return void
+     *
+     * @throws Exception
+     */
+    public function orderFormRenew($form): void
+    {
+        if ($token = Request::input('renew_token')) {
+            if ($subscription = $this->subscription()->renew($token)) {
+                if ($order = $subscription->getOrder()) {
+                    $form->session()->put($subscription->getOrder()->get('subscription_form', []));
+
+                    foreach ($form->fields() as $field) {
+                        $field->setSessionValue();
+                    }
+                }
+            } else {
+                throw new Exception('Unavailable subscription');
+            }
+        }
+    }
 
     /**
      * Validation du formulaire de commande de l'abonnement
@@ -424,39 +466,39 @@ class SubscriptionController extends BaseController
     {
         $data = [];
 
-        $form->request()->prepare();
-
-        /** @var FactoryField[] $fields */
-        $fields = $form->fields()->all();
-
-        if (!$form->request()->verify()) {
-            $form->error(__('Une erreur est survenue, impossible de valider votre demande de contact.', 'tify'));
+        if (!$form->handle()->verify()) {
+            $form->error(__('Une erreur est survenue, impossible de valider votre inscription.', 'tify'));
         } else {
-            if (!v::notEmpty()->validate($form->request()->get('billing_lastname'))) {
+            $form->handle()->prepare();
+
+            /** @var FactoryField[] $fields */
+            $fields = $form->fields()->all();
+
+            if (!v::notEmpty()->validate($form->handle()->get('billing_lastname'))) {
                 $fields['billing_lastname']->addError(__('Veuillez renseigner votre nom de famille.', 'tify'));
             }
 
-            if (!v::notEmpty()->validate($form->request()->get('billing_firstname'))) {
+            if (!v::notEmpty()->validate($form->handle()->get('billing_firstname'))) {
                 $fields['billing_firstname']->addError(__('Veuillez renseigner votre prénom.', 'tify'));
             }
 
-            if (!v::notEmpty()->validate($form->request()->get('billing_address1'))) {
+            if (!v::notEmpty()->validate($form->handle()->get('billing_address1'))) {
                 $fields['billing_address1']->addError(__('Veuillez renseigner votre adresse postale.', 'tify'));
             }
 
-            if (!v::notEmpty()->validate($form->request()->get('billing_postcode'))) {
+            if (!v::notEmpty()->validate($form->handle()->get('billing_postcode'))) {
                 $fields['billing_postcode']->addError(__('Veuillez renseigner votre code postal.', 'tify'));
             }
 
-            if (!v::notEmpty()->validate($form->request()->get('billing_city'))) {
+            if (!v::notEmpty()->validate($form->handle()->get('billing_city'))) {
                 $fields['billing_city']->addError(__('Veuillez renseigner votre ville.', 'tify'));
             }
 
-            if (!v::notEmpty()->validate($form->request()->get('billing_phone'))) {
+            if (!v::notEmpty()->validate($form->handle()->get('billing_phone'))) {
                 $fields['billing_phone']->addError(__('Veuillez renseigner votre numéro de téléphone.', 'tify'));
             }
 
-            $email = $form->request()->get('billing_email');
+            $email = $form->handle()->get('billing_email');
             if (!v::notEmpty()->validate($email)) {
                 $fields['billing_email']->addError(__('Veuillez renseigner votre adresse de messagerie.', 'tify'));
             } elseif (!v::email()->validate($email)) {
@@ -465,14 +507,8 @@ class SubscriptionController extends BaseController
                 );
             }
 
-            if (!v::notEmpty()->validate($form->request()->get('offer'))) {
+            if (!v::notEmpty()->validate($form->handle()->get('offer'))) {
                 $fields['offer']->addError(__('Veuillez choisir votre formule d\'abonnement.', 'tify'));
-            }
-
-            foreach ($fields as $slug => $field) {
-                if ($field->supports('transport')) {
-                    $field->setValue($form->request()->get($slug));
-                }
             }
 
             if (!$form->hasError()) {
@@ -480,7 +516,7 @@ class SubscriptionController extends BaseController
 
                 if (!$customer->canSubscribe()) {
                     $form->error(sprintf(
-                        __('Une autre souscription associée à [%s] existe déjà pour la période en cours.', 'theme'),
+                        __('Une autre souscription associée à [%s] existe déjà pour la période en cours.', 'tify'),
                         is_user_logged_in()
                             ? wp_get_current_user()->display_name . '/' . wp_get_current_user()->user_email
                             : $email
@@ -489,7 +525,9 @@ class SubscriptionController extends BaseController
             }
 
             if (!$form->hasError()) {
-                $data = $form->request()->all();
+                $data = $form->handle()->all();
+            } else {
+                $form->handle()->fail();
             }
         }
 
@@ -545,7 +583,7 @@ class SubscriptionController extends BaseController
 
         if (!$order->getCustomer()->canSubscribe()) {
             $this->subscription()->notify(sprintf(
-                __('Une autre souscription associée à [%s] existe déjà pour la période en cours.', 'theme'),
+                __('Une autre souscription associée à [%s] existe déjà pour la période en cours.', 'tify'),
                 is_user_logged_in()
                     ? wp_get_current_user()->display_name . '/' . wp_get_current_user()->user_email
                     : $order->getCustomerEmail()
@@ -559,7 +597,7 @@ class SubscriptionController extends BaseController
 
             return $this->subscription()->route('payment-error')->redirect([$order_key]);
         } else {
-            $this->set('form', $order->getPaymentGateway()->getPaymentForm());
+            $this->set('content', $order->getPaymentGateway()->getPaymentForm());
         }
 
         return $this->viewPaymentForm($this->all());
@@ -584,6 +622,19 @@ class SubscriptionController extends BaseController
     /**/
 
     /**
+     * Affichage du gabarit de notification.
+     *
+     * @param array $data
+     *
+     * @return Response
+     */
+    public function viewOrderNotification(array $data): Response
+    {
+        return $this->view('subscription.app::order-notification', $data);
+    }
+    /**/
+
+    /**
      * Affichage du gabarit de formulaire d'abonnement.
      *
      * @param array $data
@@ -592,7 +643,7 @@ class SubscriptionController extends BaseController
      */
     public function viewOrderForm(array $data): Response
     {
-        return $this->view('subscription::order-form', $data);
+        return $this->view('subscription.app::order-form', $data);
     }
     /**/
 
@@ -605,7 +656,7 @@ class SubscriptionController extends BaseController
      */
     public function viewPaymentError(array $data): Response
     {
-        return $this->view('subscription::payment-error', $data);
+        return $this->view('subscription.app::payment-error', $data);
     }
     /**/
 
@@ -618,7 +669,7 @@ class SubscriptionController extends BaseController
      */
     public function viewPaymentForm(array $data): Response
     {
-        return $this->view('subscription::payment-form', $data);
+        return $this->view('subscription.app::payment-form', $data);
     }
     /**/
 
@@ -631,7 +682,7 @@ class SubscriptionController extends BaseController
      */
     public function viewPaymentSuccess(array $data): Response
     {
-        return $this->view('subscription::payment-success', $data);
+        return $this->view('subscription.app::payment-success', $data);
     }
     /**/
 }

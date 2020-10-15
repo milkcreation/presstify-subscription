@@ -3,10 +3,16 @@
 namespace tiFy\Plugins\Subscription;
 
 use tiFy\Plugins\Subscription\{
+    Console\Command as CommandManager,
+    Console\GenerateOrderNumberCommand,
+    Console\GenerateSubscriptionNumberCommand,
+    Console\RenewNotifyCommand,
     Export\Export as ExportManager,
     Gateway\Gateway as GatewayManager,
     Mail\Mail as MailManager,
-    Mail\OrderMail,
+    Mail\OrderConfirmationMail,
+    Mail\OrderNotificationMail,
+    Mail\RenewNotifyMail,
     Order\Order as OrderManager,
     Offer\Offer as OfferManager
 };
@@ -21,6 +27,10 @@ class SubscriptionServiceProvider extends ServiceProvider
      */
     protected $provides = [
         'subscription',
+        'subscription.command',
+        'subscription.command.generate-order-number',
+        'subscription.command.generate-subscription-number',
+        'subscription.command.renew-notify',
         'subscription.controller',
         'subscription.customer',
         'subscription.export',
@@ -28,7 +38,8 @@ class SubscriptionServiceProvider extends ServiceProvider
         'subscription.functions',
         'subscription.gateway',
         'subscription.mail',
-        'subscription.mail.order',
+        'subscription.mail.order-confirmation',
+        'subscription.mail.order-notification',
         'subscription.offer',
         'subscription.order',
         'subscription.settings',
@@ -52,6 +63,63 @@ class SubscriptionServiceProvider extends ServiceProvider
     {
         $this->getContainer()->share('subscription', function () {
             return new Subscription(config('subscription', []), $this->getContainer());
+        });
+
+        $this->getContainer()->share('subscription.command', function () {
+            /** @var Subscription $manager */
+            $manager = $this->getContainer()->get('subscription');
+
+            $service = $manager->service('command');
+            if (!is_object($service)) {
+                $service = new $service;
+            }
+
+            $service = $service instanceof CommandManager ? $service : new CommandManager();
+
+            return $service->setSubscription($manager);
+        });
+
+        $this->getContainer()->share('subscription.command.generate-order-number', function () {
+            /** @var Subscription $manager */
+            $manager = $this->getContainer()->get('subscription');
+
+            $service = $manager->service('command.generate-order-number');
+            if (!is_object($service)) {
+                $service = new $service;
+            }
+
+            $service = $service instanceof GenerateOrderNumberCommand? $service : new GenerateOrderNumberCommand();
+
+            return $service->setSubscription($manager);
+        });
+
+        $this->getContainer()->share('subscription.command.generate-subscription-number', function () {
+            /** @var Subscription $manager */
+            $manager = $this->getContainer()->get('subscription');
+
+            $service = $manager->service('command.generate-subscription-number');
+            if (!is_object($service)) {
+                $service = new $service;
+            }
+
+            $service = $service instanceof GenerateSubscriptionNumberCommand
+                ? $service : new GenerateSubscriptionNumberCommand();
+
+            return $service->setSubscription($manager);
+        });
+
+        $this->getContainer()->share('subscription.command.renew-notify', function () {
+            /** @var Subscription $manager */
+            $manager = $this->getContainer()->get('subscription');
+
+            $service = $manager->service('command.renew-notify');
+            if (!is_object($service)) {
+                $service = new $service;
+            }
+
+            $service = $service instanceof RenewNotifyCommand ? $service : new RenewNotifyCommand();
+
+            return $service->setSubscription($manager);
         });
 
         $this->getContainer()->share('subscription.controller', function () {
@@ -81,7 +149,6 @@ class SubscriptionServiceProvider extends ServiceProvider
 
             return $service->setSubscription($manager);
         });
-
 
         $this->getContainer()->share('subscription.export', function () {
             /** @var Subscription $manager */
@@ -153,16 +220,44 @@ class SubscriptionServiceProvider extends ServiceProvider
             return $service->setSubscription($manager);
         });
 
-        $this->getContainer()->share('subscription.mail.order', function () {
+        $this->getContainer()->share('subscription.mail.order-confirmation', function () {
             /** @var Subscription $manager */
             $manager = $this->getContainer()->get('subscription');
 
-            $service = $manager->service('mail.order');
+            $service = $manager->service('mail.order-confirmation');
             if (!is_object($service)) {
                 $service = new $service;
             }
 
-            $service = $service instanceof OrderMail ? $service : new OrderMail();
+            $service = $service instanceof OrderConfirmationMail ? $service : new OrderConfirmationMail();
+
+            return $service->setSubscription($manager);
+        });
+
+        $this->getContainer()->share('subscription.mail.order-notification', function () {
+            /** @var Subscription $manager */
+            $manager = $this->getContainer()->get('subscription');
+
+            $service = $manager->service('mail.order-notification');
+            if (!is_object($service)) {
+                $service = new $service;
+            }
+
+            $service = $service instanceof OrderNotificationMail ? $service : new OrderNotificationMail();
+
+            return $service->setSubscription($manager);
+        });
+
+        $this->getContainer()->share('subscription.mail.renew-notify', function () {
+            /** @var Subscription $manager */
+            $manager = $this->getContainer()->get('subscription');
+
+            $service = $manager->service('mail.renew-notify');
+            if (!is_object($service)) {
+                $service = new $service;
+            }
+
+            $service = $service instanceof RenewNotifyMail ? $service : new RenewNotifyMail();
 
             return $service->setSubscription($manager);
         });

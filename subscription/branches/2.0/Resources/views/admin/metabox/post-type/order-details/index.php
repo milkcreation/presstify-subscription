@@ -50,9 +50,10 @@
                             : partial('tag', [
                                 'attrs'   => [
                                     'href'  => 'mailto:' . $order->getCustomer()->getEmail(),
-                                    'title' => sprintf(__('Envoyer un mail à %s', 'tify'), $order->getCustomer()->getEmail()),
+                                    'title' => sprintf(__('Envoyer un mail à %s', 'tify'),
+                                        $order->getCustomer()->getEmail()),
                                 ],
-                                'content' => $order->getCustomer()->getEmail(),
+                                'content' => $order->getCustomer()->getDisplayName() ?: $order->getCustomer()->getEmail(),
                                 'tag'     => 'a',
                             ]);
                         ?>

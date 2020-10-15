@@ -10,6 +10,14 @@ class ListTableFactory extends BaseFactory
     use SubscriptionAwareTrait;
 
     /**
+     * Liste des fournisseurs de services.
+     * @var string[]
+     */
+    protected $serviceProviders = [
+        ServiceProvider::class,
+    ];
+
+    /**
      * @inheritDoc
      */
     public function boot(): void
@@ -208,6 +216,7 @@ class ListTableFactory extends BaseFactory
                     'per_page' => 20,
                 ],
                 'bulk-actions' => false,
+                'extras'       => ['export', 'filter'],
                 'row-actions'  => false,
                 'search'       => false,
                 'view-filters' => false,
@@ -223,9 +232,13 @@ class ListTableFactory extends BaseFactory
                 ],
             ],
             'providers' => [
-                'db'   => (new Db())->setSubscription($this->subscription),
-                'item' => (new Item())->setSubscription($this->subscription),
+                'db'      => (new Db())->setSubscription($this->subscription),
+                'builder' => (new DbBuilder())->setSubscription($this->subscription),
+                'item'    => (new Item())->setSubscription($this->subscription),
             ],
+            'viewer'    => [
+                'override_dir' => $this->subscription->resources('/views/template/export-order')
+            ]
         ]);
     }
 }

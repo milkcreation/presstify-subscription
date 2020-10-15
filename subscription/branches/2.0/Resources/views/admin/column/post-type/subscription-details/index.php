@@ -19,46 +19,53 @@
         </span>
     </dd>
     <?php if ($subscription->isLimitedEnabled()) : ?>
-    <dd>
-        <label><?php _e('Durée de l\'abonnement', 'tify'); ?> : </label>
-        <span>
-            <?php echo $subscription->getLimitedHtml() ? : '--' ?>
+        <dd>
+            <label><?php _e('Durée d\'abonnement', 'tify'); ?> : </label>
+            <span>
+            <?php echo $subscription->getLimitedHtml() ?: '--' ?>
         </span>
-    </dd>
-    <dd>
-        <label><?php _e('Début de l\'abonnement', 'tify'); ?> : </label>
-        <span>
+        </dd>
+        <dd>
+            <label><?php _e('Début d\'abonnement', 'tify'); ?> : </label>
+            <span>
             <?php echo ($date = $subscription->getStartDate()) ? $date->format('d/m/Y H\hi') : '--'; ?>
         </span>
-    </dd>
-    <dd>
-        <label><?php _e('Fin de l\'abonnement', 'tify'); ?> : </label>
-        <span>
+        </dd>
+        <dd>
+            <label><?php _e('Fin d\'abonnement', 'tify'); ?> : </label>
+            <span>
            <?php echo ($date = $subscription->getEndDate()) ? $date->format('d/m/Y H\hi') : '--'; ?>
         </span>
-    </dd>
+        </dd>
     <?php endif; ?>
 
     <dt><?php _e('Ré-engagement', 'tify'); ?></dt>
     <dd>
         <label><?php _e('Actif', 'tify'); ?> : </label>
-        <span>
-            <?php echo $subscription->isRenewEnabled() ? __('Oui', 'tify') : __('Non', 'tify') ?>
-        </span>
+        <span><?php $subscription->isRenewEnabled() ? printf(
+                _nx('%d jour avant', '%d jours avant expiration', $subscription->getRenewDays(), 'tify'),
+                $subscription->getRenewDays()
+            ) : _e('Non', 'tify'); ?></span>
     </dd>
     <?php if ($subscription->isRenewEnabled()) : ?>
-    <dd>
-        <label><?php _e('A partir de', 'tify'); ?> : </label>
-        <span>
-            <?php echo ($days = $subscription->getRenewDays())
-                ? sprintf(_n('%d jour', '%d jours', $days, 'tify'), $days) : '--'; ?>
-        </span>
-    </dd>
-    <dd>
-        <label><?php _e('Mail de notification', 'tify'); ?> : </label>
-        <span>
-            <?php echo $subscription->isRenewNotify() ? __('Oui', 'tify') : __('Non', 'tify'); ?>
-        </span>
-    </dd>
+        <hr>
+        <dd>
+            <label><?php _e('Mail de rappel', 'tify'); ?> : </label>
+            <span><?php echo $subscription->isRenewNotifyEnabled() ? __('Oui', 'tify') : __('Non', 'tify'); ?></span>
+        </dd>
+
+        <?php if ($date = $subscription->getRenewNotified()) : ?>
+            <dd>
+                <label><?php _e('Envoyé le', 'tify'); ?> : </label>
+                <span><?php echo $date->format('d/m/Y à H\hi'); ?></span>
+            </dd>
+        <?php elseif ($subscription->isRenewNotifyEnabled() && ($days = $subscription->getRenewNotifyDays()) && !$subscription->isExpired()) : ?>
+            <dd>
+                <label><?php _e('Programmé le', 'tify'); ?> : </label>
+                <span><?php printf(_n(
+                    '%s (%d jour avant expiration)', '%s (%d jours avant expiration)', $days, 'tify'
+                ), $subscription->getRenewNotifyDate()->format('d/m/Y'), $days); ?></span>
+            </dd>
+        <?php endif; ?>
     <?php endif; ?>
 </dl>

@@ -2,7 +2,8 @@
 
 namespace tiFy\Plugins\Subscription;
 
-use tiFy\Support\ParamsBag;
+use tiFy\Mail\Mailer;
+use tiFy\Support\{Arr, ParamsBag};
 use tiFy\Support\Proxy\Metabox;
 use tiFy\Wordpress\Proxy\Option;
 
@@ -21,6 +22,12 @@ class SubscriptionSettings
      * @var ParamsBag
      */
     protected $params;
+
+    /**
+     * Adresse de messagerie par défault d'expédition des email transactionnels.
+     * @var array|null
+     */
+    protected $defaultEmail;
 
     /**
      * Initialisation.
@@ -46,13 +53,35 @@ class SubscriptionSettings
             /**/
 
             $this->params([
-                'price' => array_merge(
-                    $this->subscription()->config('settings.price', []),
-                    get_option('subscription_price') ?: []
+                'form'      => array_merge(
+                    $this->subscription()->config('settings.form', []),
+                    get_option('subscription_form') ?: []
                 ),
-                'offer' => array_merge(
+                'mail'       => [
+                    'order_confirmation' => array_merge(
+                        $this->subscription()->config('settings.mail.order_confirmation', []),
+                        get_option('subscription_mail_order_confirmation') ?: []
+                    ),
+                    'order_notification' => array_merge(
+                        $this->subscription()->config('settings.mail.order_notification', []),
+                        get_option('subscription_mail_order_notification') ?: []
+                    ),
+                    'renew_notify'       => array_merge(
+                        $this->subscription()->config('settings.mail.renew_notify', []),
+                        get_option('subscription_mail_renew_notify') ?: []
+                    ),
+                ],
+                'legal_info' => array_merge(
+                    $this->subscription()->config('settings.legal_info', []),
+                    get_option('subscription_legal_info') ?: []
+                ),
+                'offer'      => array_merge(
                     $this->subscription()->config('settings.offer', []),
                     get_option('subscription_offer') ?: []
+                ),
+                'price'      => array_merge(
+                    $this->subscription()->config('settings.price', []),
+                    get_option('subscription_price') ?: []
                 ),
             ]);
 
@@ -81,6 +110,129 @@ class SubscriptionSettings
                 ->setHandler(function ($box) {
                     $box->set('settings', $this);
                 });
+
+            // -- Emails
+            Metabox::add('subscription-mail', [
+                'title' => __('Emails', 'tify'),
+            ])->setScreen('subscription-settings@options')->setContext('tab');
+
+            // --- Confirmation d'abonnement
+            Metabox::add('subscription-mail_order_confirmation', [
+                'name'   => 'subscription_mail_order_confirmation',
+                'parent' => 'subscription-mail',
+                'title'  => __('Confirmation de commande', 'tify'),
+                'value'  => get_option('subscription_mail_order_confirmation') ?: [],
+                'viewer' => [
+                    'directory' => $path . '/mail/order-confirmation',
+                ],
+            ])->setScreen('subscription-settings@options')->setContext('tab')
+                ->setHandler(function ($box) {
+                    $box->set('settings', $this);
+                });
+
+            register_setting('subscription-settings', 'subscription_mail_order_confirmation', function ($value) {
+                $sender = $value['sender'] ?? null;
+
+                if (!empty($sender['email']) && !is_email($sender['email'])) {
+                    add_settings_error(
+                        'subscription-settings',
+                        'sender-email_format',
+                        __('Email de l\'expéditeur de confirmation de commande non valide.', 'tify'),
+                    );
+                }
+
+                return $value;
+            });
+
+            // --- Notification d'abonnement
+            Metabox::add('subscription-mail_order_notification', [
+                'name'   => 'subscription_mail_order_notification',
+                'parent' => 'subscription-mail',
+                'title'  => __('Notification de commande', 'tify'),
+                'value'  => get_option('subscription_mail_order_notification') ?: [],
+                'viewer' => [
+                    'directory' => $path . '/mail/order-notification',
+                ],
+            ])->setScreen('subscription-settings@options')->setContext('tab')
+                ->setHandler(function ($box) {
+                    $box->set('settings', $this);
+                });
+
+            register_setting('subscription-settings', 'subscription_mail_order_notification', function ($value) {
+                $sender = $value['sender'] ?? null;
+
+                if (!empty($sender['email']) && !is_email($sender['email'])) {
+                    add_settings_error(
+                        'subscription-settings',
+                        'sender-email_format',
+                        __('Email de l\'expéditeur de la notification non valide.', 'tify'),
+                    );
+                }
+
+                $recipients = $value['recipients'] ?? null;
+
+                if ($recipients) {
+                    foreach ($recipients as $recipient => $recip) {
+                        if (empty($recip['email'])) {
+                            add_settings_error(
+                                'subscription-settings',
+                                $recipient . '-email_empty',
+                                __('L\'email du destinataire de la notification de commande ne peut être vide.', 'tify')
+                            );
+                        } elseif (!is_email($recip['email'])) {
+                            add_settings_error(
+                                'subscription-settings',
+                                $recipient . '-email_format',
+                                __('Email du destinataire de la notification de commande non valide', 'tify')
+                            );
+                        }
+                    }
+                }
+
+                return $value;
+            });
+
+            // --- Invite de ré-engagement
+            Metabox::add('subscription-mail_renew_notify', [
+                'name'   => 'subscription_mail_renew_notify',
+                'parent' => 'subscription-mail',
+                'title'  => __('Invite de ré-engagement', 'tify'),
+                'value'  => get_option('subscription_mail_renew_notify') ?: [],
+                'viewer' => [
+                    'directory' => $path . '/mail/renew-notify',
+                ],
+            ])->setScreen('subscription-settings@options')->setContext('tab')
+                ->setHandler(function ($box) {
+                    $box->set('settings', $this);
+                });
+
+            register_setting('subscription-settings', 'subscription_mail_renew_notify', function ($value) {
+                $sender = $value['sender'] ?? null;
+
+                if (!empty($sender['email']) && !is_email($sender['email'])) {
+                    add_settings_error(
+                        'subscription-settings',
+                        'sender-email_format',
+                        __('Email de l\'expéditeur de l\'invite de ré-engagement non valide.', 'tify'),
+                    );
+                }
+
+                return $value;
+            });
+
+            // Informations légales
+            Metabox::add('subscription-legal_info', [
+                'name'   => 'subscription_legal_info',
+                'title'  => __('Information légales', 'tify'),
+                'value'  => get_option('subscription_legal_info') ?: [],
+                'viewer' => [
+                    'directory' => $path . '/legal-info',
+                ],
+            ])->setScreen('subscription-settings@options')->setContext('tab')
+                ->setHandler(function ($box) {
+                    $box->set('settings', $this);
+                });
+
             /**/
 
             $this->booted = true;
@@ -107,6 +259,27 @@ class SubscriptionSettings
     public function getCurrencyPos(): string
     {
         return (string)$this->params('price.currency_pos', 'right');
+    }
+
+    /**
+     * Récupération de l'adresse de messagerie par défaut des transactions.
+     *
+     * @return array
+     */
+    public function getDefaultEmail(): array
+    {
+        if (is_null($this->defaultEmail)) {
+            $email = get_option('admin_email');
+            $default[] = $email;
+
+            if ($user = get_user_by('email', $email)) {
+                $default[] = $user->display_name;
+            }
+
+            $this->defaultEmail = $default;
+        }
+
+        return $this->defaultEmail;
     }
 
     /**
@@ -140,6 +313,39 @@ class SubscriptionSettings
     }
 
     /**
+     * Récupération de l'expéditeur du mail de confirmation d'abonnement.
+     *
+     * @return array
+     */
+    public function getOrderConfirmationSender(): array
+    {
+        return ($v = Mailer::parseContact($this->params('mail.order_confirmation.sender')))
+            ? current($v) : $this->getDefaultEmail();
+    }
+
+    /**
+     * Récupération de l'expéditeur du mail de notification d'abonnement.
+     *
+     * @return array
+     */
+    public function getOrderNotificationSender(): array
+    {
+        return ($v = Mailer::parseContact($this->params('mail.order_notification.sender')))
+            ? current($v) : $this->getDefaultEmail();
+    }
+
+    /**
+     * Récupération du(es) destinataire(s) du mail de notification d'abonnement.
+     *
+     * @return array
+     */
+    public function getOrderNotificationRecipients(): array
+    {
+        return ($v = Mailer::parseContact(array_values($this->params('mail.order_notification.recipients', [])))
+        ) ? $v : $this->getDefaultEmail();
+    }
+
+    /**
      * Récupération du nombre de décimal utilisée pour le calcul et l'affichage du prix.
      *
      * @return int
@@ -156,7 +362,7 @@ class SubscriptionSettings
      */
     public function getPriceDecimalSeparator(): string
     {
-        return ($separator = $this->params('price.decimal_sep')) ? stripslashes($separator) : '.';
+        return ($separator = $this->params('price.decimal_sep')) ? Arr::stripslashes($separator) : '.';
     }
 
     /**
@@ -202,7 +408,38 @@ class SubscriptionSettings
      */
     public function getPriceThousandSeparator(): ?string
     {
-        return stripslashes($this->params('price.thousand_sep', ''));
+        return Arr::stripslashes($this->params('price.thousand_sep', ''));
+    }
+
+    /**
+     * Récupération de l'identifiant de qualification de la page de politique de confidentialité du site.
+     *
+     * @return int
+     */
+    public function getPrivacyPolicyPageId(): int
+    {
+        return (int)$this->params('legal_info.privacy_policy', get_option('wp_page_for_privacy_policy'));
+    }
+
+    /**
+     * Nombre de jours avant l'expédition d'un mail d'invitation au ré-engagement d'abonnement.
+     *
+     * @return int
+     */
+    public function getRenewNotifyDays(): int
+    {
+        return (int)($this->params('mail.renew_notify.days', 0) ?: ceil($this->getOfferRenewDays() / 2));
+    }
+
+    /**
+     * Récupération de l'expéditeur du mail d'invite de ré-engagement d'un abonné.
+     *
+     * @return array
+     */
+    public function getRenewNotifySender(): array
+    {
+        return ($v = Mailer::parseContact($this->params('mail.renew_notify.sender')))
+            ? current($v) : $this->getDefaultEmail();
     }
 
     /**
@@ -213,6 +450,16 @@ class SubscriptionSettings
     public function getTaxDisplay(): string
     {
         return $this->params('price.tax_display', 'incl') === 'excl' ? 'excl' : 'incl';
+    }
+
+    /**
+     * Récupération de l'identifiant de qualification de la page de politique de confidentialité du site.
+     *
+     * @return int
+     */
+    public function getTermsOfUsePageId(): int
+    {
+        return (int)$this->params('legal_info.terms_of_use', 0);
     }
 
     /**
@@ -236,13 +483,23 @@ class SubscriptionSettings
     }
 
     /**
-     * Vérifie si la gestion du ré-engagement est actif.
+     * Vérifie si la gestion d'un email de confirmation de commande est actif.
      *
      * @return bool
      */
-    public function isOfferRenewNotify(): bool
+    public function isOrderConfirmationEnabled(): bool
     {
-        return filter_var($this->params('offer.renew.notify', 'on'), FILTER_VALIDATE_BOOLEAN);
+        return filter_var($this->params('mail.order_confirmation.enabled', 'on'), FILTER_VALIDATE_BOOLEAN);
+    }
+
+    /**
+     * Vérifie si la gestion d'un email de confirmation de commande est actif.
+     *
+     * @return bool
+     */
+    public function isOrderNotificationEnabled(): bool
+    {
+        return filter_var($this->params('mail.order_notification.enabled', 'off'), FILTER_VALIDATE_BOOLEAN);
     }
 
     /**
@@ -253,6 +510,16 @@ class SubscriptionSettings
     public function isPricesIncludeTax()
     {
         return filter_var($this->params('price.include_tax'), FILTER_VALIDATE_BOOLEAN);
+    }
+
+    /**
+     * Vérifie si la gestion d'un email de ré-engagement est actif.
+     *
+     * @return bool
+     */
+    public function isRenewNotifyEnabled(): bool
+    {
+        return filter_var($this->params('mail.renew_notify.enabled', 'off'), FILTER_VALIDATE_BOOLEAN);
     }
 
     /**

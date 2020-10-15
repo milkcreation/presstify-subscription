@@ -9,7 +9,7 @@
     <tr>
         <th><?php _e('Devise', 'tify'); ?></th>
         <td>
-            <?php echo field('select-js', [
+            <?php echo field('select', [
                 'choices'  => [
                     'EUR' => __('Euros (€)', 'tify'),
                 ],
@@ -22,7 +22,7 @@
     <tr>
         <th><?php _e('Position de la devise', 'tify'); ?></th>
         <td>
-            <?php echo field('select-js', [
+            <?php echo field('select', [
                 'choices' => [
                     'left'        => __('Gauche', 'tify'),
                     'right'       => __('Droite', 'tify'),
@@ -88,7 +88,7 @@
     <tr>
         <th><?php _e('Affichage des prix', 'tify'); ?></th>
         <td>
-            <?php echo field('select-js', [
+            <?php echo field('select', [
                 'choices' => [
                     'incl' => __('TTC', 'tify'),
                     'excl' => __('HT', 'tify'),
@@ -101,7 +101,7 @@
     <tr>
         <th><?php _e('Suffixe d\'affichage du prix', 'tify'); ?></th>
         <td>
-            <?php echo field('select-js', [
+            <?php echo field('select', [
                 'attrs'   => [
                     'id'          => 'priceDisplaySuffix-switcher',
                     'data-target' => '#priceDisplaySuffix-customizer',

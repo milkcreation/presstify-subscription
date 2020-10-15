@@ -28,7 +28,7 @@
                 'name'  => $this->name() . '[limited][length]',
                 'value' => $settings->getOfferLimitedLength(),
             ]); ?>
-            <?php echo field('select-js', [
+            <?php echo field('select', [
                 'attrs'   => [
                     'style' => 'display:inline-block;vertical-align:middle;',
                 ],
@@ -68,15 +68,6 @@
                 'name'  => $this->name() . '[renew][days]',
                 'value' => $settings->getOfferRenewDays(),
             ])); ?>
-        </td>
-    </tr>
-    <tr>
-        <th><?php _e('Envoyer une notification par mail à l\'abonné', 'tify'); ?></th>
-        <td>
-            <?php echo field('toggle-switch', [
-                'name'  => $this->name() . '[renew][notify]',
-                'value' => $settings->isOfferRenewNotify() ? 'on' : 'off',
-            ]); ?>
         </td>
     </tr>
 </table>

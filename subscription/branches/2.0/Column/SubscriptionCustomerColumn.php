@@ -13,7 +13,7 @@ class SubscriptionCustomerColumn extends AbstractColumnDisplayPostTypeController
      */
     public function header()
     {
-        return $this->item->getTitle() ? : __('Client', 'tify');
+        return $this->item->getTitle() ?: __('Client', 'tify');
     }
 
     /**
@@ -25,30 +25,30 @@ class SubscriptionCustomerColumn extends AbstractColumnDisplayPostTypeController
         $subscription = QuerySubscription::create($post_id);
 
         return ($u = $subscription->getCustomer()->getUser())
-            ? '<b>#' . $u->getId() . '</b> - '. Partial::get('tag', [
-                    'attrs'  => [
-                        'href' => 'mailto:' . $u->getEmail(),
-                        'title' => sprintf(__('Envoyer un mail à %s', 'tify'), $u->getDisplayName()),
-                        'style' => 'margin-bottom:5px; display:inline-block;'
-                    ],
-                    'content' => $u->getEmail(),
-                    'tag' => 'a'
-                ]) . '<br>' . Partial::get('tag', [
-                    'attrs'  => [
-                        'class' => 'button-secondary',
-                        'href' => $u->getEditUrl(),
-                        'title' => sprintf(__('Editer l\'utilisateur %s', 'tify'), $u->getDisplayName())
-                    ],
-                    'content' => __('Éditer l\'utilisateur', 'tify'),
-                    'tag' => 'a'
-                ])
+            ? '<b>#' . $u->getId() . '</b> - ' . Partial::get('tag', [
+                'attrs'   => [
+                    'href'  => 'mailto:' . $u->getEmail(),
+                    'title' => sprintf(__('Envoyer un mail à %s', 'tify'), $u->getDisplayName()),
+                    'style' => 'margin-bottom:5px; display:inline-block;'
+                ],
+                'content' => join(' - ', array_filter([$u->getDisplayName(), $u->getEmail()])),
+                'tag'     => 'a'
+            ]) . '<br>' . Partial::get('tag', [
+                'attrs'   => [
+                    'class' => 'button-secondary',
+                    'href'  => $u->getEditUrl(),
+                    'title' => sprintf(__('Editer l\'utilisateur %s', 'tify'), $u->getDisplayName())
+                ],
+                'content' => __('Éditer l\'utilisateur', 'tify'),
+                'tag'     => 'a'
+            ])
             : (($email = $subscription->getCustomerEmail()) ? Partial::get('tag', [
-                'attrs'  => [
-                    'href' => 'mailto:' . $email,
+                'attrs'   => [
+                    'href'  => 'mailto:' . $email,
                     'title' => sprintf(__('Envoyer un mail à %s', 'tify'), $email)
                 ],
-                'content' => $email,
-                'tag' => 'a'
+                'content' => join(' - ', array_filter([$subscription->getCustomer()->getDisplayName(), $email])),
+                'tag'     => 'a'
             ]) : '--');
     }
 }
