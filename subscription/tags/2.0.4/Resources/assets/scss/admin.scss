@@ -1,0 +1,239 @@
+@import "~presstify-framework/field/datepicker/scss/styles";
+
+// Personnalisation
+// PRODUITS
+body.post-type-subscription-offer {
+  #poststuff {
+    .FieldNumber {
+      min-height: 30px;
+      vertical-align: middle;
+    }
+
+    .FieldSelectJs {
+      display: inline-block;
+      vertical-align: middle;
+    }
+  }
+}
+
+/// COMMANDES
+body.post-type-subscription-order {
+  #poststuff {
+    #post-body-content {
+      margin-bottom: 0;
+    }
+
+    .Order-notes {
+      position: relative;
+      padding: 0;
+
+      &::before {
+        position: absolute;
+        top: 0;
+        left: 5px;
+        content: " ";
+        display: block;
+        background-color: map-get($colors, light);
+        width: 2px;
+        height: 100%;
+      }
+    }
+
+    .Order-note {
+      position: relative;
+      margin-left: 30px;
+      margin-bottom: 20px;
+      padding: 10px;
+      border: solid 1px map-get($colors, light);
+      border-radius: 5px;
+
+      &::before {
+        position: absolute;
+        top: 50%;
+        left: -25px;
+        content: " ";
+        display: block;
+        background-color: map-get($colors, light);
+        width: 10px;
+        height: 10px;
+        margin-top: -5px;
+        margin-left: -5px;
+        border-radius: 5px;
+      }
+    }
+
+    .Order-noteDate {
+      font-size: 10px;
+      color: map-get($colors, medium);
+    }
+  }
+}
+
+/// ABONNEMENTS
+body.post-type-subscription {
+  .wp-list-table {
+    .column-subscription-expiration {
+      width: 40px;
+      vertical-align: middle;
+    }
+  }
+
+  #poststuff {
+    #post-body-content {
+      margin-bottom: 0;
+    }
+
+    .FieldNumber {
+      min-height: 30px;
+      vertical-align: middle;
+    }
+
+    .FieldSelectJs {
+      display: inline-block;
+      vertical-align: middle;
+    }
+  }
+}
+
+/// EXPORT
+.ListTable--export-order {
+  .column-id {
+    min-width: 50px;
+  }
+
+  .column-created {
+    min-width: 150px;
+  }
+
+  .column-status {
+    min-width: 100px;
+  }
+
+  .column-customer {
+    min-width: 300px;
+  }
+
+  .column-lastname {
+    min-width: 150px;
+  }
+
+  .column-firstname {
+    min-width: 150px;
+  }
+
+  .column-company_name {
+    min-width: 150px;
+  }
+
+  .column-company_status {
+    min-width: 150px;
+  }
+
+  .column-transaction_id {
+    min-width: 150px;
+  }
+
+  .column-payment_method {
+    min-width: 150px;
+  }
+
+  .column-payment_date {
+    min-width: 200px;
+  }
+
+  .column-total_with_tax,
+  .column-total_without_tax {
+    min-width: 100px;
+  }
+
+  .column-tax {
+    min-width: 75px;
+  }
+
+  .column-billing_firstname,
+  .column-billing_lastname,
+  .column-billing_company {
+    min-width: 150px;
+  }
+
+  .column-billing_address1,
+  .column-billing_address2 {
+    min-width: 250px;
+  }
+
+  .column-billing_postcode {
+    min-width: 100px;
+  }
+
+  .column-billing_city {
+    min-width: 150px;
+  }
+
+  .column-billing_phone {
+    min-width: 150px;
+  }
+
+  .column-billing_email {
+    min-width: 200px;
+  }
+
+  .column-shipping_firstname,
+  .column-shipping_lastname,
+  .column-shipping_company {
+    min-width: 150px;
+  }
+
+  .column-shipping_address1,
+  .column-shipping_address2 {
+    min-width: 250px;
+  }
+
+  .column-shipping_postcode {
+    min-width: 100px;
+  }
+
+  .column-shipping_city {
+    min-width: 150px;
+  }
+}
+
+/// REGLAGES
+input[type=text].SubcriptionBannerTitle {
+  background-color: map-get($colors, regular);
+  color: map-get($colors, primary);
+  padding: 3px 8px;
+  font-size: 1.7em;
+  line-height: 100%;
+  height: 1.7em;
+  width: 100%;
+  outline: 0;
+  margin: 0 0 3px;
+  font-weight: bold;
+}
+
+input[type=text].SubcriptionBannerButton {
+  position: relative;
+  padding: 1em 3em 0.9em;
+  border: none;
+  border-radius: 6px;
+  font-weight: bold;
+  font-size: 16px;
+  text-transform: none;
+  outline: none;
+  line-height: 1.2;
+  text-align: center;
+  color: map-get($colors, white);
+  background-color: map-get($colors, primary);
+}
+
+.SubcriptionBannerIcon {
+  .FieldSelectJs-selectionItem {
+    background-color: map-get($colors, regular);
+  }
+
+  &.FieldSelectJs[aria-arrow="true"] .FieldSelectJs-trigger::after {
+    border-top-color: map-get($colors, white);
+    border-bottom-color: map-get($colors, white);
+
+  }
+}
