@@ -66,6 +66,7 @@ class Offer
             PostType::register('subscription-offer', [
                 'plural'             => __('Offres', 'tify'),
                 'singular'           => __('Offre', 'tify'),
+                'gender'             => true,
                 'hierarchical'       => false,
                 'publicly_queryable' => false,
                 'show_in_menu'       => false,
@@ -83,6 +84,7 @@ class Offer
                 ->registerSingle('subscription-offer', '_renewable')
                 ->registerSingle('subscription-offer', '_renew_days')
                 ->registerSingle('subscription-offer', '_renew_notify')
+                ->registerSingle('subscription-offer', '_renew_notify_days')
                 ->registerSingle('subscription-offer', '_sku')
                 ->registerSingle('subscription-offer', '_tax');
             /**/

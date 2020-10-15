@@ -97,6 +97,16 @@ class SubscriptionCustomer extends ParamsBag
     }
 
     /**
+     * Récupération du nom d'affichage.
+     *
+     * @return string
+     */
+    public function getDisplayName(): string
+    {
+        return $this->get('display_name') ?: '';
+    }
+
+    /**
      * Récupération de l'identifiant de qualification de l'utilisateur associé.
      *
      * @return int

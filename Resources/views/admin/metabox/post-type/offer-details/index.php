@@ -91,7 +91,7 @@
                 'name'  => '_limited_length',
                 'value' => $offer->getLimitedLength()
             ]); ?>
-            <?php echo field('select-js', [
+            <?php echo field('select', [
                 'attrs'   => [
                     'style' => 'display:inline-block;vertical-align:middle;',
                 ],
@@ -139,8 +139,21 @@
         <td>
             <?php echo field('toggle-switch', [
                 'name'  => '_renew_notify',
-                'value' => $offer->isRenewNotify() ? 'on': 'off'
+                'value' => $offer->isRenewNotifyEnabled() ? 'on': 'off'
             ]); ?>
+        </td>
+    </tr>
+    <tr>
+        <th><?php _e('Jours avant l\'expédition du rappel', 'tify'); ?></th>
+        <td>
+            <?php printf('%s jours avant l\'expiration de l\'abonnement.', field('number', [
+                'attrs' => [
+                    'max' => $offer->getRenewDays(),
+                    'min' => 1
+                ],
+                'name'  => '_renew_notify_days',
+                'value' => $offer->getRenewNotifyDays()
+            ])->render()); ?>
         </td>
     </tr>
 </table>

@@ -47,6 +47,8 @@ class QueryOrderLineItem extends ParamsBag
             return null;
         }
 
+        $end->subDay()->setTime(23, 59, 59);
+
         $length = $this->getLimitedLength();
 
         switch ($this->getLimitedUnity()) {
@@ -94,19 +96,21 @@ class QueryOrderLineItem extends ParamsBag
     {
         if ($subscription = QuerySubscription::insert()) {
             $subscription->set(array_merge([
-                'customer_email' => $this->getOrder()->getCustomerEmail(),
-                'customer_id'    => $this->getOrder()->getCustomerId(),
-                'limited_length' => $this->getLimitedLength(),
-                'limited_unity'  => $this->getLimitedUnity(),
-                'end_date'       => $this->calcEndDate()->format('Y-m-d H:i:s'),
-                'limited'        => $this->isLimitedEnabled() ? 'on' : 'off',
-                'offer_id'       => $this->getOfferId(),
-                'offer_label'    => $this->getLabel(),
-                'order_id'       => $this->getOrderId(),
-                'renewable'      => $this->isRenewEnabled() ? 'on' : 'off',
-                'renew_days'     => $this->getRenewDays(),
-                'renew_notify'   => $this->isRenewNotify() ? 'on' : 'off',
-                'start_date'     => $this->calcStartDate()->format('Y-m-d H:i:s'),
+                'customer_display_name' => $this->getOrder()->getCustomerDisplayName(),
+                'customer_email'        => $this->getOrder()->getCustomerEmail(),
+                'customer_id'           => $this->getOrder()->getCustomerId(),
+                'limited_length'        => $this->getLimitedLength(),
+                'limited_unity'         => $this->getLimitedUnity(),
+                'end_date'              => $this->calcEndDate()->format('Y-m-d H:i:s'),
+                'limited'               => $this->isLimitedEnabled() ? 'on' : 'off',
+                'offer_id'              => $this->getOfferId(),
+                'offer_label'           => $this->getLabel(),
+                'order_id'              => $this->getOrderId(),
+                'renewable'             => $this->isRenewEnabled() ? 'on' : 'off',
+                'renew_days'            => $this->getRenewDays(),
+                'renew_notify'          => $this->isRenewNotifyEnabled() ? 'on' : 'off',
+                'start_date'            => $this->calcStartDate()->format('Y-m-d H:i:s'),
+                'subscription_number'   => $this->subscription()->generateUniqueNumber(null, $subscription)
             ], $data))->update();
         } else {
             throw new Exception(__('Impossible de créer un nouvel abonnement.', 'tify'));
@@ -294,7 +298,7 @@ class QueryOrderLineItem extends ParamsBag
      *
      * @return bool
      */
-    public function isRenewNotify(): bool
+    public function isRenewNotifyEnabled(): bool
     {
         return (bool)$this->get('renew_notify', false);
     }

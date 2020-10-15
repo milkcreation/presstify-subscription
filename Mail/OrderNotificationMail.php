@@ -6,7 +6,7 @@ use tiFy\Plugins\Subscription\Order\QueryOrder;
 use tiFy\Mail\Mail as BaseMail;
 use tiFy\Plugins\Subscription\SubscriptionAwareTrait;
 
-class OrderMail extends BaseMail
+class OrderNotificationMail extends BaseMail
 {
     use SubscriptionAwareTrait;
 
@@ -24,11 +24,13 @@ class OrderMail extends BaseMail
         return array_merge(parent::defaults(), [
             'data'    => $this->order->getInvoiceDatas(),
             'subject' => sprintf(
-                __('[%s] >> Votre commande n°%d', 'tify'), get_bloginfo('blogname'), $this->order->getId()
+                __('[%s] >> Nouvelle commande : %s', 'tify'),
+                get_bloginfo('blogname'), $this->order->getNumber() ?: $this->order->getId()
             ),
-            'to'      => $this->order->getBilling('email'),
+            'from'    => $this->subscription()->settings()->getOrderNotificationSender(),
+            'to'      => $this->subscription()->settings()->getOrderNotificationRecipients(),
             'viewer'  => [
-                'override_dir' => $this->subscription()->resources('/views/mail/order'),
+                'override_dir' => $this->subscription()->resources('/views/mail/order-notification'),
             ],
         ]);
     }

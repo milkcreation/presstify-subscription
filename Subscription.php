@@ -3,31 +3,39 @@
 namespace tiFy\Plugins\Subscription;
 
 use Exception;
+use Illuminate\Database\Eloquent\Builder;
 use Psr\Container\ContainerInterface as Container;
 use tiFy\Contracts\{Log\Logger, Partial\FlashNotice, Routing\Route};
-use tiFy\Plugins\Subscription\{
-    Column\SubscriptionDetailsColumn,
+use tiFy\Plugins\Subscription\{Column\SubscriptionDetailsColumn,
     Column\SubscriptionExpirationColumn,
     Column\SubscriptionCustomerColumn,
     Column\UserSubscriptionColumn,
+    Console\Command,
+    Console\GenerateOrderNumberCommand,
+    Console\GenerateSubscriptionNumberCommand,
+    Console\RenewNotifyCommand,
     Export\Export,
     Gateway\Gateway,
     Mail\Mail,
-    Mail\OrderMail,
+    Mail\OrderConfirmationMail,
+    Mail\OrderNotificationMail,
+    Mail\RenewNotifyMail,
     Order\Order,
     Offer\Offer
 };
-use tiFy\Support\{ParamsBag, Str};
+use tiFy\Support\{DateTime, ParamsBag, Str};
 use tiFy\Support\Proxy\{Column, Form, Log, Metabox, Partial, PostType, Router, View};
+use tiFy\Validation\Validator as v;
 use tiFy\Wordpress\Contracts\Query\{QueryPost as QueryPostContract, QueryUser as QueryUserContract};
 use tiFy\Metabox\MetaboxDriver;
+use tiFy\Wordpress\Database\Model\Post as PostModel;
 use WP_Post, WP_User, WP_Query;
 
 /**
  * @desc Extension PresstiFy de gestion d'abonnements.
  * @author Jordy Manner <jordy@milkcreation.fr>
  * @package tiFy\Plugins\Subscription
- * @version 2.0.3
+ * @version 2.0.4
  *
  * USAGE :
  * Activation
@@ -83,18 +91,24 @@ class Subscription
      * Liste des services par défaut fournis par conteneur d'injection de dépendances.
      */
     protected $defaultService = [
-        'controller' => SubscriptionController::class,
-        'customer'   => SubscriptionCustomer::class,
-        'export'     => Export::class,
-        'form'       => SubscriptionOrderForm::class,
-        'functions'  => SubscriptionFunctions::class,
-        'gateway'    => Gateway::class,
-        'mail'       => Mail::class,
-        'mail.order' => OrderMail::class,
-        'offer'      => Offer::class,
-        'order'      => Order::class,
-        'settings'   => SubscriptionSettings::class,
-        'session'    => SubscriptionSession::class,
+        'command'                              => Command::class,
+        'command.generate-order-number'        => GenerateOrderNumberCommand::class,
+        'command.generate-subscription-number' => GenerateSubscriptionNumberCommand::class,
+        'command.renew-notify'                 => RenewNotifyCommand::class,
+        'controller'                           => SubscriptionController::class,
+        'customer'                             => SubscriptionCustomer::class,
+        'export'                               => Export::class,
+        'form'                                 => SubscriptionOrderForm::class,
+        'functions'                            => SubscriptionFunctions::class,
+        'gateway'                              => Gateway::class,
+        'mail'                                 => Mail::class,
+        'mail.order-confirmation'              => OrderConfirmationMail::class,
+        'mail.order-notification'              => OrderNotificationMail::class,
+        'mail.renew-notify'                    => RenewNotifyMail::class,
+        'offer'                                => Offer::class,
+        'order'                                => Order::class,
+        'settings'                             => SubscriptionSettings::class,
+        'session'                              => SubscriptionSession::class,
     ];
 
     /**
@@ -206,6 +220,7 @@ class Subscription
             $this->gateway()->boot();
             $this->export()->boot();
             $this->session()->boot();
+            $this->command()->boot();
             /**/
 
             /* TYPES DE POST */
@@ -257,11 +272,29 @@ class Subscription
             /* METABOXES */
             PostType::meta()
                 ->registerSingle('subscription', '_product_label')
+                ->registerSingle('subscription', '_limited_length')
+                ->registerSingle('subscription', '_limited_unity')
+                ->registerSingle('subscription', '_start_date', function (string $date): string {
+                    if (v::date('d/m/Y')->validate($date)) {
+                        return DateTime::createFromFormat('d/m/Y', $date)->setTime(0, 0, 0)->format('Y-m-d H:i:s');
+                    } else {
+                        return '';
+                    }
+                })
+                ->registerSingle('subscription', '_end_date', function (string $date): string {
+                    if (v::date('d/m/Y')->validate($date)) {
+                        return DateTime::createFromFormat('d/m/Y', $date)->setTime(23, 59, 59)->format('Y-m-d H:i:s');
+                    } else {
+                        return '';
+                    }
+                })
+                ->registerSingle('subscription', '_renewable')
                 ->registerSingle('subscription', '_renew_days')
-                ->registerSingle('subscription', '_renew_notify');
+                ->registerSingle('subscription', '_renew_notify')
+                ->registerSingle('subscription', '_renew_notify_days');
 
             Metabox::add('subscription-actions', [
-                'title'  => __('Actions sur l\'abonnement', 'tify'),
+                'title'  => __('Actions', 'tify'),
                 'viewer' => [
                     'directory' => $this->resources('/views/admin/metabox/post-type/subscription-actions'),
                 ],
@@ -329,7 +362,7 @@ class Subscription
             /**/
 
             /* VUES */
-            View::addFolder('subscription', $this->resources('/views/checkout'));
+            View::addFolder('subscription.app', $this->resources('/views/app'));
             /**/
 
             $this->booted = true;
@@ -378,6 +411,16 @@ class Subscription
     }
 
     /**
+     * Récupération de l'instance du gestionnaire de Commandes CLI.
+     *
+     * @return Command|null
+     */
+    public function command(): Command
+    {
+        return $this->resolve('command');
+    }
+
+    /**
      * Récupération de l'instance du controleur.
      *
      * @return SubscriptionController|null
@@ -397,7 +440,7 @@ class Subscription
     public function customer($id = null): ?SubscriptionCustomer
     {
         /** @var SubscriptionCustomer $customer */
-        return  ($customer = $this->resolve('customer')) ? $customer::create($id) : null;
+        return ($customer = $this->resolve('customer')) ? $customer::create($id) : null;
     }
 
     /**
@@ -450,6 +493,40 @@ class Subscription
     public function gateway(): ?Gateway
     {
         return $this->resolve('gateway');
+    }
+
+    /**
+     * Génération d'un numéro d'abonnement unique.
+     *
+     * @param int|null $count
+     * @param QuerySubscription|null $subscription
+     *
+     * @return string
+     */
+    public function generateUniqueNumber(?int $count = null, ?QuerySubscription $subscription = null): string
+    {
+        if (is_null($count)) {
+            $query = PostModel::where('post_type', 'subscription');
+
+            if ($subscription) {
+                $query->where('ID', '<', $subscription->getId())->orderBy('ID', 'asc');
+            }
+
+            $count = $query->count() + 1;
+        }
+
+        $prefix = 'abo-';
+        $prefix .= $subscription ? $subscription->getDateTime()->format('y') : date('y');
+        $number = $prefix . sprintf('%0' . 6 . 's', $count);
+
+        if ($exists = PostModel::where('post_type', 'order')->whereHas('meta', function (Builder $query) use ($number) {
+            $query->where('meta_key', '_subscription_number');
+            $query->where('meta_value', $number);
+        })->exists()) {
+            return $this->generateUniqueNumber(++$count, $subscription);
+        }
+
+        return $number;
     }
 
     /**
@@ -645,5 +722,17 @@ class Subscription
         $this->container = $container;
 
         return $this;
+    }
+
+    /**
+     * Instance d'un abonnement à renouveler.
+     *
+     * @param string $token
+     *
+     * @return QuerySubscription
+     */
+    public function renew($token): ?QueryPostContract
+    {
+        return QuerySubscription::createFromRenewToken($token);
     }
 }

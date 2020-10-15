@@ -2,11 +2,13 @@
 
 namespace tiFy\Plugins\Subscription\Order;
 
+use Illuminate\Database\Eloquent\Builder;
 use tiFy\Plugins\Subscription\SubscriptionAwareTrait;
 use Illuminate\Support\Collection;
 use tiFy\Contracts\{Metabox\MetaboxDriver, PostType\PostTypeStatus};
 use tiFy\Support\Proxy\{Column, Metabox, PostType};
 use tiFy\Wordpress\Contracts\Query\{QueryPost as QueryPostContract};
+use tiFy\Wordpress\Database\Model\Post as PostModel;
 use WP_Post, WP_Query;
 
 class Order
@@ -243,7 +245,7 @@ class Order
 
             /* METABOXES */
             Metabox::add('order-actions', [
-                'title'  => __('Actions sur la commande', 'tify'),
+                'title'  => __('Actions', 'tify'),
                 'viewer' => [
                     'directory' => $this->subscription()->resources('/views/admin/metabox/post-type/order-actions'),
                 ],
@@ -332,6 +334,41 @@ class Order
     public function get($post = null): ?QueryPostContract
     {
         return QueryOrder::create($post);
+    }
+
+    /**
+     * Génération d'un numéro de commande unique.
+     *
+     * @param int|null $count
+     * @param QueryOrder|null $order
+     *
+     * @return string
+     */
+    public function generateUniqueNumber(?int $count = null, ?QueryOrder $order = null): string
+    {
+        if (is_null($count)) {
+            $query = PostModel::where('post_type', 'subscription-order');
+
+            if ($order) {
+                $query->where('ID', '<',  $order->getId())->orderBy('ID', 'asc');
+            }
+
+            $count =  $query->count()+1;
+        }
+
+        $prefix = 'cmd-';
+        $prefix .= $order ? $order->getDateTime()->format('y') : date('y');
+        $number = $prefix . sprintf( '%0' . 6 . 's', $count);
+
+        if ($exists = PostModel::where('post_type', 'subscription-order')->whereHas('meta',
+            function (Builder $query) use ($number) {
+                $query->where('meta_key', '_order_number');
+                $query->where('meta_value', $number);
+        })->exists()) {
+            return $this->generateUniqueNumber(++$count, $order);
+        }
+
+        return $number;
     }
 
     /**

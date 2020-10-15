@@ -16,28 +16,33 @@
         <span><?php echo $offer->getSku() ?: '--'; ?></span>
     </dd>
 
-    <?php if ($settings->isOfferLimitedEnabled()) : ?>
-    <dt><?php _e('Engagement', 'tify'); ?></dt>
-    <dd>
-        <label><?php _e('Durée', 'tify'); ?> : </label>
-        <span><?php echo $offer->getLimitedHtml(); ?></span>
-    </dd>
+    <?php if ($offer->isLimitedEnabled()) : ?>
+        <dt><?php _e('Engagement', 'tify'); ?></dt>
+        <dd>
+            <label><?php _e('Durée', 'tify'); ?> : </label>
+            <span><?php echo $offer->getLimitedHtml(); ?></span>
+        </dd>
     <?php endif; ?>
 
-    <?php if ($settings->isOfferRenewEnabled()) : ?>
     <dt><?php _e('Ré-engagement', 'tify'); ?></dt>
     <dd>
-        <label><?php _e('Possible', 'tify'); ?> : </label>
-        <span>
-            <?php printf(
-                _nx('%d jour avant', '%d jours avant', $offer->getRenewDays(), 'tify'),
+        <label><?php _e('Actif', 'tify'); ?> : </label>
+        <span><?php $offer->isRenewEnabled() ? printf(
+                _nx('%d jour avant', '%d jours avant expiration', $offer->getRenewDays(), 'tify'),
                 $offer->getRenewDays()
-            ); ?>
-        </span>
+            ) : _e('Non', 'tify'); ?></span>
     </dd>
-    <dd>
-        <label><?php _e('Notification de l\'abonné', 'tify'); ?> : </label>
-        <span><?php $offer->isRenewNotify() ? _e('Oui', 'tify') : _e('Non', 'tify'); ?></span>
-    </dd>
+    <?php if ($offer->isRenewEnabled()) : ?>
+        <hr>
+        <dd>
+            <label><?php _e('Mail de rappel', 'tify'); ?> : </label>
+            <span><?php $offer->isRenewNotifyEnabled() ? _e('Oui', 'tify') : _e('Non', 'tify'); ?></span>
+        </dd>
+        <dd>
+            <label><?php _e('Expédié', 'tify'); ?> : </label>
+            <span><?php printf(_n(
+                '%d jour avant expiration', '%d jours avant expiration', $offer->getRenewNotifyDays(), 'tify'
+            ), $offer->getRenewNotifyDays()); ?></span>
+        </dd>
     <?php endif; ?>
 </dl>

@@ -56,7 +56,7 @@
             <dd>
                 <label><?php _e('Mail de notification', 'tify'); ?> : </label>
                 <span>
-                <?php echo $s->isRenewNotify() ? __('Oui', 'tify') : __('Non', 'tify'); ?>
+                <?php echo $s->isRenewNotifyEnabled() ? __('Oui', 'tify') : __('Non', 'tify'); ?>
             </span>
             </dd>
             <dd>

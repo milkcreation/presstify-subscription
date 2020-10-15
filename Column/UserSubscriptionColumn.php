@@ -3,6 +3,7 @@
 namespace tiFy\Plugins\Subscription\Column;
 
 use tiFy\Column\AbstractColumnDisplayUserController;
+use tiFy\Support\Proxy\PostType;
 
 class UserSubscriptionColumn extends AbstractColumnDisplayUserController
 {
@@ -11,7 +12,7 @@ class UserSubscriptionColumn extends AbstractColumnDisplayUserController
      */
     public function header()
     {
-        return $this->item->getTitle() ? : __('Abonnement', 'tify');
+        return $this->item->getTitle() ? : PostType::get('subscription')->label('singular_name');
     }
 
     /**

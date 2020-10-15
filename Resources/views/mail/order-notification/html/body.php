@@ -9,7 +9,9 @@
             <tr class="rowBodyContent-section rowBodyContent-section--header">
                 <td>
                     <h1 class="Title--1">
-                        <?php printf(__('Facture de la commande n°%d', 'tify'), $this->get('order.id')); ?>
+                        <?php printf(__('Facture de la commande : %s', 'tify'), $this->get(
+                            'order.number', $this->get('order.id')
+                        )); ?>
                     </h1>
                 </td>
             </tr>
@@ -17,12 +19,12 @@
             <tr class="rowBodyContent-section rowBodyContent-section--body">
                 <td>
                     <p>
-                        <?php printf(__('Bonjour, %s', 'tify'), $this->get('billing.display_name')); ?>
+                        <?php _e('Bonjour,', 'tify'); ?>
                     </p>
                     <p>
                         <?php printf(
-                            __('Voici le détail de votre commande passée le %s', 'tify'),
-                            $this->get('order.payment_date')
+                            __('Voici le détail de la nouvelle commande passée le %s à %s', 'tify'),
+                            $this->get('order.payment_date'), $this->get('order.payment_time')
                         ); ?> :
                     </p>
                     <br>
@@ -211,10 +213,10 @@
                 <td>
                     <p>
                         <i><?php _e(
-                                'L\'accès au téléchargement PDF et à la version en ligne nécessite d\'être connecté ' .
-                                'à votre compte.',
-                                'tify'
-                            ); ?></i>
+                            'L\'accès au téléchargement PDF et à la version en ligne nécessite d\'être connecté ' .
+                            'à votre compte.',
+                            'tify'
+                        ); ?></i>
                     </p>
                 </td>
             </tr>

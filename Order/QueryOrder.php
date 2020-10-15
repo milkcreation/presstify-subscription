@@ -45,6 +45,7 @@ class QueryOrder extends BaseQueryPost
         'date_paid'            => '_date_paid',
         'misc'                 => '_misc',
         'order_key'            => '_order_key',
+        'order_number'          => '_order_number',
         'payment_method'       => '_payment_method',
         'payment_method_title' => '_payment_method_title',
         'prices_include_tax'   => '_prices_include_tax',
@@ -230,21 +231,21 @@ class QueryOrder extends BaseQueryPost
     }
 
     /**
-     * Récupération de l'instance de la plateforme de paiement associée.
+     * Génération du nom de qualification.
      *
-     * @return PaymentGateway|null
+     * @return string
      */
-    public function getPaymentGateway(): ?PaymentGateway
+    public function generateTitle(): string
     {
-        if (is_null($this->paymentGateway)) {
-            if ($paymentGateway = $this->subscription()->gateway()->get($this->get('payment_method'))) {
-                $this->paymentGateway = $paymentGateway->setOrder($this);
-            } else {
-                $this->paymentGateway = false;
-            }
+        $title = ($num = $this->getNumber())
+            ? sprintf(__('Commande - %s', 'tify'), $num)
+            : sprintf(__('Commande - #%d', 'tify'), $this->getId());
+
+        if ($date = $this->getDate()) {
+            $title .= ' &ndash; ' . date_i18n('j F Y @ H:i A', strtotime($date));
         }
 
-        return $this->paymentGateway ?: null;
+        return $title;
     }
 
     /**
@@ -291,6 +292,18 @@ class QueryOrder extends BaseQueryPost
     }
 
     /**
+     * Récupération du mail de confirmation d'abonnement.
+     *
+     * @param array $params
+     *
+     * @return MailContract|null
+     */
+    public function getConfirmationMail(array $params = []): MailContract
+    {
+        return $this->subscription()->mail()->orderConfirmation($this)->setParams($params);
+    }
+
+    /**
      * Récupération de l'utilisateur associé à la commande.
      *
      * @return SubscriptionCustomer
@@ -299,14 +312,30 @@ class QueryOrder extends BaseQueryPost
     {
         if (is_null($this->customer)) {
             $this->customer = ($id = $this->getCustomerId())
-                ? $this->subscription()->customer($id) : $this->subscription()->customer($this->getCustomerEmail());
+                ? $this->subscription()->customer($id)
+                : $this->subscription()->customer($this->getCustomerEmail())->set([
+                    'display_name' => $this->getCustomerDisplayName()
+                ]);
         }
 
         return $this->customer ?: null;
     }
 
     /**
-     * Récupération de l'utilisateur associé à la commande.
+     * Récupération du nom d'affichage du client associé à la commande.
+     *
+     * @return string
+     */
+    public function getCustomerDisplayName(): string
+    {
+        return (string)$this->get('customer_display_name') ?: join(' ', array_filter([
+            $this->getBilling('firstname', ''),
+            $this->getBilling('lastname', '')
+        ]));
+    }
+
+    /**
+     * Récupération de l'email du client associé à la commande.
      *
      * @return string
      */
@@ -316,7 +345,7 @@ class QueryOrder extends BaseQueryPost
     }
 
     /**
-     * Récupération de l'utilisateur associé à la commande.
+     * Récupération de l'ientifiant de qualification du client associé à la commande.
      *
      * @return int
      */
@@ -396,18 +425,6 @@ class QueryOrder extends BaseQueryPost
     }
 
     /**
-     * Récupération du mail.
-     *
-     * @param array $params
-     *
-     * @return MailContract
-     */
-    public function getMail(array $params = []): MailContract
-    {
-        return $this->subscription()->mail()->order($this)->setParams($params);
-    }
-
-    /**
      * Récupération des données de facture.
      *
      * @return array
@@ -429,7 +446,10 @@ class QueryOrder extends BaseQueryPost
             'order'        => [
                 'id'                => $this->getId(),
                 'created_date'      => $this->getDateTime()->format('d/m/Y'),
+                'created_time'      => $this->getDateTime()->format('H:i'),
+                'number'            => $this->getNumber(),
                 'payment_date'      => $this->getPaymentDatetime()->format('d/m/Y'),
+                'payment_time'      => $this->getPaymentDatetime()->format('H:i'),
                 'payment_method'    => $this->getPaymentMethodTitle(),
                 'tax'               => $this->subscription()->functions()->displayPrice($this->getTotalTax()),
                 'taxable'           => $this->isTotalTaxable(),
@@ -491,6 +511,48 @@ class QueryOrder extends BaseQueryPost
     }
 
     /**
+     * Récupération du numéro de commande.
+     *
+     * @return string
+     */
+    public function getNumber(): string
+    {
+        return (string)$this->get('order_number', '');
+    }
+
+    /**
+     * Récupération des notes de commande.
+     *
+     * @return QueryCommentContract[]|array
+     */
+    public function getNotes(): array
+    {
+        return $this->getComments(['type' => 'order_note', 'orderby' => 'comment_ID']);
+    }
+
+    /**
+     * Récupération du mail de notification d'abonnement.
+     *
+     * @param array $params
+     *
+     * @return MailContract|null
+     */
+    public function getNotificationMail(array $params = []): MailContract
+    {
+        return $this->subscription()->mail()->orderNotification($this)->setParams($params);
+    }
+
+    /**
+     * Récupération de la clé de qualification de commande.
+     *
+     * @return string|null
+     */
+    public function getOrderKey(): ?string
+    {
+        return $this->get('order_key');
+    }
+
+    /**
      * Récupération de la date de paiement.
      *
      * @return DateTime|null
@@ -507,6 +569,24 @@ class QueryOrder extends BaseQueryPost
     }
 
     /**
+     * Récupération de l'instance de la plateforme de paiement associée.
+     *
+     * @return PaymentGateway|null
+     */
+    public function getPaymentGateway(): ?PaymentGateway
+    {
+        if (is_null($this->paymentGateway)) {
+            if ($paymentGateway = $this->subscription()->gateway()->get($this->get('payment_method'))) {
+                $this->paymentGateway = $paymentGateway->setOrder($this);
+            } else {
+                $this->paymentGateway = false;
+            }
+        }
+
+        return $this->paymentGateway ?: null;
+    }
+
+    /**
      * Récupération de l'intitulé de qualification du moyen de paiement.
      *
      * @return string
@@ -514,26 +594,6 @@ class QueryOrder extends BaseQueryPost
     public function getPaymentMethodTitle(): string
     {
         return (string)$this->get('payment_method_title', '');
-    }
-
-    /**
-     * Récupération des notes de commande.
-     *
-     * @return QueryCommentContract[]|array
-     */
-    public function getNotes(): array
-    {
-        return $this->getComments(['type' => 'order_note', 'orderby' => 'comment_ID']);
-    }
-
-    /**
-     * Récupération de la clé de qualification de commande.
-     *
-     * @return string|null
-     */
-    public function getOrderKey(): ?string
-    {
-        return $this->get('order_key');
     }
 
     /**
@@ -873,10 +933,7 @@ class QueryOrder extends BaseQueryPost
             'post_modified_gmt' => DateTime::now('gmt')->toDateTimeString(),
         ];
 
-        $postdata['post_title'] = sprintf(__('Commande n°%s', 'tify'), $this->getId());
-        if ($date = $this->getDate()) {
-            $postdata['post_title'] .= ' &ndash; ' . date_i18n('j F Y @ H:i A', strtotime($date));
-        }
+        $postdata['post_title'] = $this->generateTitle();
 
         foreach (static::$metasMap as $key => $metaKey) {
             $postdata['meta'][$metaKey] = $this->get($key);

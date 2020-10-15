@@ -2,10 +2,13 @@
 
 namespace tiFy\Plugins\Subscription;
 
-use tiFy\Plugins\Subscription\Offer\QueryOffer;
+use Illuminate\Support\Collection;
+use tiFy\Contracts\Mail\Mail as MailContract;
+use tiFy\Plugins\Subscription\{Offer\QueryOffer, Order\QueryOrder};
+use tiFy\Support\DateTime;
+use tiFy\Support\Proxy\Crypt;
 use tiFy\Wordpress\Contracts\Query\QueryPost as QueryPostContract;
 use tiFy\Wordpress\Query\QueryPost as BaseQueryPost;
-use tiFy\Support\DateTime;
 use WP_Post;
 
 class QuerySubscription extends BaseQueryPost
@@ -22,20 +25,23 @@ class QuerySubscription extends BaseQueryPost
      * @var string[]
      */
     protected static $metasMap = [
-        'customer_email' => '_customer_email',
-        'customer_id'    => '_customer_id',
-        'end_date'       => '_end_date',
-        'imported'       => '_imported',
-        'offer_id'       => '_offer_id',
-        'offer_label'    => '_offer_label',
-        'order_id'       => '_order_id',
-        'limited'        => '_limited',
-        'limited_length' => '_limited_length',
-        'limited_unity'  => '_limited_unity',
-        'renewable'      => '_renewable',
-        'renew_days'     => '_renew_days',
-        'renew_notify'   => '_renew_notify',
-        'start_date'     => '_start_date',
+        'customer_email'        => '_customer_email',
+        'customer_id'           => '_customer_id',
+        'customer_display_name' => '_customer_display_name',
+        'end_date'              => '_end_date',
+        'imported'              => '_imported',
+        'offer_id'              => '_offer_id',
+        'offer_label'           => '_offer_label',
+        'order_id'              => '_order_id',
+        'limited'               => '_limited',
+        'limited_length'        => '_limited_length',
+        'limited_unity'         => '_limited_unity',
+        'renewable'             => '_renewable',
+        'renew_days'            => '_renew_days',
+        'renew_notify'          => '_renew_notify',
+        'renew_notify_days'     => '_renew_notify_days',
+        'start_date'            => '_start_date',
+        'subscription_number'   => '_subscription_number',
     ];
 
     /**
@@ -53,6 +59,34 @@ class QuerySubscription extends BaseQueryPost
     }
 
     /**
+     * Récupération d'un abonnement associé à un jeton de renouvellement.
+     *
+     * @param $token
+     *
+     * @return static|null
+     */
+    public static function createFromRenewToken($token): ?self
+    {
+        if (!$datas = Crypt::decrypt($token)) {
+            return null;
+        }
+
+        $datas = json_decode($datas, true);
+
+        if (!($id = $datas['id'] ?? 0) && !($email = $datas['email'] ?? null)) {
+            return null;
+        }
+
+        /** @var self $obj */
+        $obj = static::createFromId($id);
+        if(!($obj instanceof static) && ($obj->getCustomerEmail() !== $email) && !$obj->isRenewable()) {
+            return null;
+        }
+
+        return $obj;
+    }
+
+    /**
      * Définition de metadonnées complémentaires.
      *
      * @param string[] $map
@@ -65,6 +99,48 @@ class QuerySubscription extends BaseQueryPost
     }
 
     /**
+     * Génération du nom de qualification.
+     *
+     * @return string
+     */
+    public function generateTitle(): string
+    {
+        $title = ($num = $this->getNumber())
+            ? sprintf(__('%s - %s', 'tify'), $this->getType()->label('singular_name'), $num)
+            : sprintf(__('%s - #%d', 'tify'), $this->getType()->label('singular_name'), $this->getId());
+
+        if ($date = $this->getDate()) {
+            $title .= ' &ndash; ' . date_i18n('j F Y @ H:i A', strtotime($date));
+        }
+
+        return $title;
+    }
+
+    /**
+     * Récupération du client associé.
+     *
+     * @return SubscriptionCustomer|null
+     */
+    public function getCustomer(): ?SubscriptionCustomer
+    {
+        return ($id = (int)$this->get('customer_id'))
+            ? $this->subscription()->customer($id)
+            : $this->subscription()->customer($this->get('customer_email'))->set([
+                'display_name' => $this->getCustomerDisplayName()
+            ]);
+    }
+
+    /**
+     * Récupération de l'email de contact du client associé.
+     *
+     * @return string
+     */
+    public function getCustomerDisplayName(): string
+    {
+        return $this->get('customer_display_name') ?: '';
+    }
+
+    /**
      * Récupération de l'email de contact du client associé.
      *
      * @return string
@@ -72,6 +148,26 @@ class QuerySubscription extends BaseQueryPost
     public function getCustomerEmail(): string
     {
         return $this->get('customer_email') ?: '';
+    }
+
+    /**
+     * Récupération de la date de fin.
+     *
+     * @return DateTime|null
+     */
+    public function getEndDate(): ?DateTime
+    {
+        return ($date = $this->get('end_date')) ? DateTime::createFromTimeString($date) : null;
+    }
+
+    /**
+     * Récupération de l'intitulé de qualification.
+     *
+     * @return string
+     */
+    public function getLabel(): string
+    {
+        return (string)$this->get('offer_label', '');
     }
 
     /**
@@ -120,93 +216,6 @@ class QuerySubscription extends BaseQueryPost
     }
 
     /**
-     * Récupération de la date de fin.
-     *
-     * @return DateTime|null
-     */
-    public function getEndDate(): ?DateTime
-    {
-        return ($date = $this->get('end_date')) ? DateTime::createFromTimeString($date) : null;
-    }
-
-    /**
-     * Récupération de l'intitulé de qualification.
-     *
-     * @return string
-     */
-    public function getLabel(): string
-    {
-        return (string)$this->get('offer_label', '');
-    }
-
-    /**
-     * Récupération de l'offre associée.
-     *
-     * @return QueryOffer|null
-     */
-    public function getOffer(): ?QueryOffer
-    {
-        return ($id = (int)$this->get('offer_id')) ? $this->subscription()->offer()->get($id) : null;
-    }
-
-    /**
-     * Récupération du nombre de jours de la période de ré-engagement.
-     *
-     * @return int
-     */
-    public function getRenewDays(): int
-    {
-        return (int)$this->get('renew_days', 0) ?: 0;
-    }
-
-    /**
-     * Récupération de la date de ré-engagement.
-     *
-     * @return DateTime|null
-     */
-    public function getRenewableDate(): ?DateTime
-    {
-        if (!$date = $this->getEndDate()) {
-            return null;
-        }
-
-        $date->subDays($this->getRenewDays());
-
-        return $date;
-    }
-
-    /**
-     * Récupération de la date de début.
-     *
-     * @return DateTime|null
-     */
-    public function getStartDate(): ?DateTime
-    {
-        return ($date = $this->get('start_date')) ? DateTime::createFromTimeString($date) : null;
-    }
-
-    /**
-     * Récupération du client associé.
-     *
-     * @return SubscriptionCustomer|null
-     */
-    public function getCustomer(): ?SubscriptionCustomer
-    {
-        return ($id = (int)$this->get('customer_id'))
-            ? $this->subscription()->customer($id) : $this->subscription()->customer($this->get('customer_email'));
-    }
-
-    /**
-     * Création d'un nouvel abonnement.
-     *
-     * @return static|null
-     */
-    public static function insert(): ?QueryPostContract
-    {
-        return ($id = wp_insert_post(['post_type' => static::$postType])) ? static::createFromId($id) : null;
-    }
-
-    /**
      * Récupération de métadonnée cartographiée.
      *
      * @param string|array|null $key
@@ -229,6 +238,172 @@ class QuerySubscription extends BaseQueryPost
         }
 
         return $default;
+    }
+
+    /**
+     * Récupération du numéro d'abonnement.
+     *
+     * @return string
+     */
+    public function getNumber(): string
+    {
+        return (string)$this->get('subscription_number', '');
+    }
+
+    /**
+     * Récupération de l'offre associée.
+     *
+     * @return QueryOffer|null
+     */
+    public function getOffer(): ?QueryOffer
+    {
+        return ($id = (int)$this->get('offer_id')) ? $this->subscription()->offer()->get($id) : null;
+    }
+
+    /**
+     * Récupération de la commande.
+     *
+     * @return QueryOrder|null
+     */
+    public function getOrder(): ?QueryOrder
+    {
+        return ($id = (int)$this->get('order_id')) ? $this->subscription()->order()->get($id) : null;
+    }
+
+    /**
+     * Récupération du nombre de jours de la période de ré-engagement.
+     *
+     * @return int
+     */
+    public function getRenewDays(): int
+    {
+        return (int)$this->get('renew_days', 0) ?: 0;
+    }
+
+    /**
+     * Récupération du jeton de renouvellement.
+     *
+     * @return DateTime|null
+     */
+    public function getRenewToken(): string
+    {
+        return Crypt::encrypt(json_encode(['id' =>$this->getId(), 'email' => $this->getCustomerEmail()]));
+    }
+
+    /**
+     * Récupération de l'url de renouvellement.
+     *
+     * @param array $params
+     *
+     * @return string
+     */
+    public function getRenewUrl(array $params = []): string
+    {
+        return $this->subscription()->route('order-form')->getUrl(
+            array_merge($params, ['renew_token' => $this->getRenewToken()]), true
+        );
+    }
+
+    /**
+     * Récupération de la date de ré-engagement.
+     *
+     * @return DateTime|null
+     */
+    public function getRenewableDate(): ?DateTime
+    {
+        if (!$date = $this->getEndDate()) {
+            return null;
+        }
+
+        $date->subDays($this->getRenewDays());
+
+        return $date;
+    }
+
+    /**
+     * Date d'éxpédion du rappel de notification de ré-engagement.
+     *
+     * @return DateTime|null
+     */
+    public function getRenewNotified(): ?DateTime
+    {
+        if ($date = $this->getMetaSingle('_renew_notified')) {
+            return DateTime::createFromTimeString($date);
+        }
+
+        return null;
+    }
+
+    /**
+     * Récupération du nombre de jours avant l'expiration pour l'expédition du mail de rappel.
+     *
+     * @return DateTime|null
+     */
+    public function getRenewNotifyDate(): ?DateTime
+    {
+        if (!$end = $this->getEndDate()) {
+            return null;
+        } elseif (!$days = $this->getRenewNotifyDays()) {
+            return null;
+        }
+
+        return $end->addDay()->subDays($days)->setTime(0, 0, 0);
+    }
+
+    /**
+     * Récupération du nombre de jours avant l'expiration pour l'expédition du mail de rappel.
+     *
+     * @return int
+     */
+    public function getRenewNotifyDays(): int
+    {
+        return (int)($this->get('renew_notify_days', 0) ?: $this->getRenewDays() / 2);
+    }
+
+    /**
+     * Récupération de la date de début.
+     *
+     * @return DateTime|null
+     */
+    public function getStartDate(): ?DateTime
+    {
+        return ($date = $this->get('start_date')) ? DateTime::createFromTimeString($date) : null;
+    }
+
+    /**
+     * Vérifie si l'abonnement a été renouvelé par un autre abonnement.
+     *
+     * @return bool
+     */
+    public function hasRenewed(): bool
+    {
+        if (!$end = $this->getEndDate()) {
+            return false;
+        }
+
+        $end->setTime(0, 0, 0);
+
+        $subcriptions = $this->getCustomer()->getSubscriptions();
+
+        return !!(new Collection($subcriptions))->first(function (QuerySubscription $item) use ($end) {
+            if ($item->getId() === $this->getId()) {
+                return false;
+            } elseif (!$start = $item->getStartDate()) {
+                return false;
+            }
+
+            return $start->greaterThanOrEqualTo($end);
+        });
+    }
+
+    /**
+     * Création d'un nouvel abonnement.
+     *
+     * @return static|null
+     */
+    public static function insert(): ?QueryPostContract
+    {
+        return ($id = wp_insert_post(['post_type' => static::$postType])) ? static::createFromId($id) : null;
     }
 
     /**
@@ -304,7 +479,7 @@ class QuerySubscription extends BaseQueryPost
      *
      * @return bool
      */
-    public function isRenewNotify(): bool
+    public function isRenewNotifyEnabled(): bool
     {
         return filter_var($this->get('renew_notify'), FILTER_VALIDATE_BOOLEAN);
     }
@@ -357,6 +532,36 @@ class QuerySubscription extends BaseQueryPost
     }
 
     /**
+     * Vérifie si le rappel d'abonnement doit être expédié.
+     *
+     * @param DateTime|null $date
+     *
+     * @return bool
+     */
+    public function mustRenewNotify(?DateTime $date = null): bool
+    {
+        if (!$this->isRenewEnabled()) {
+            return false;
+        } elseif (!$this->isRenewNotifyEnabled()) {
+            return false;
+        } elseif ($this->getRenewNotified()) {
+            return false;
+        } elseif (!$notify = $this->getRenewNotifyDate()) {
+            return false;
+        }
+
+        if (is_null($date)) {
+            $date = DateTime::now(DateTime::getGlobalTimeZone());
+        }
+
+        if ($this->isExpired()) {
+            return false;
+        }
+
+        return $date->greaterThanOrEqualTo($notify);
+    }
+
+    /**
      * Traitement de la liste des variables de l'abonnement
      *
      * @return static
@@ -373,6 +578,18 @@ class QuerySubscription extends BaseQueryPost
     }
 
     /**
+     * Email de notification de renouvellement d'abonnement en expiration.
+     *
+     * @param array $params
+     *
+     * @return MailContract|null
+     */
+    public function renewNotifyMail(array $params = []): ?MailContract
+    {
+        return $this->subscription()->mail()->renewNotify($this)->setParams($params);
+    }
+
+    /**
      * Mise à jour des données de l'abonnement en base de donnée.
      *
      * @return void
@@ -385,7 +602,7 @@ class QuerySubscription extends BaseQueryPost
             'meta'        => [],
         ];
 
-        $postdata['post_title'] = sprintf(__('Abonnement n°%s', 'tify'), $this->getId());
+        $postdata['post_title'] = $this->generateTitle();
 
         foreach (static::$metasMap as $key => $metaKey) {
             $postdata['meta'][$metaKey] = $this->get($key);

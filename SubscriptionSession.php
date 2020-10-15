@@ -35,8 +35,6 @@ class SubscriptionSession
     public function boot(): self
     {
         if (!$this->booted) {
-            $this->store = Session::registerStore('subscription');
-
             $this->booted = true;
         }
 
@@ -56,7 +54,7 @@ class SubscriptionSession
     public function __call(string $name, array $arguments)
     {
         try {
-            return $this->store->$name(...$arguments);
+            return $this->store()->$name(...$arguments);
         } catch (Exception $e) {
             throw new BadMethodCallException(sprintf(
                     __('La méthode de session [%s] n\'est pas disponible.', 'tify'), $name)
@@ -90,5 +88,19 @@ class SubscriptionSession
         }
 
         return $this->subscription()->order()->get($order_id);
+    }
+
+    /**
+     * Récupération de l'instance de la session.
+     *
+     * @return Store
+     */
+    public function store(): Store
+    {
+        if (is_null($this->store)) {
+            $this->store = Session::registerStore('subscription');
+        }
+
+        return $this->store;
     }
 }

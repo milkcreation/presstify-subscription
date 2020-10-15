@@ -6,10 +6,10 @@
 ?>
 <?php $this->layout('subscription::layout'); ?>
 
-<p><?php echo partial('flash-notice'); ?></p>
+<div class="SubscriptionContent SubscriptionContent--payment_form">
+    <p><?php echo partial('flash-notice'); ?></p>
 
-<div class="PaymentForm">
     <?php $this->insert('subscription::order-summary', $this->all()); ?>
 
-    <?php echo $this->get('form'); ?>
+    <?php echo $this->get('content'); ?>
 </div>
