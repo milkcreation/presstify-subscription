@@ -8,7 +8,7 @@ use tiFy\Plugins\Subscription\Order\{QueryOrder, QueryOrderLineItem};
 use tiFy\Contracts\Http\{RedirectResponse, Response};
 use tiFy\Routing\BaseController;
 use tiFy\Support\DateTime;
-use tiFy\Support\Proxy\{Partial, Request};
+use tiFy\Support\Proxy\Request;
 use tiFy\Validation\Validator as v;
 
 class SubscriptionController extends BaseController
@@ -412,14 +412,10 @@ class SubscriptionController extends BaseController
         }
 
         if (Request::isMethod('post')) {
-            if ($data = $this->orderFormValidate($form)) {
-                try {
-                    $order = $this->createOrder($data);
+            $this->orderFormValidate($form);
 
-                    return $this->subscription()->route('payment-form')->redirect([$order->getOrderKey()]);
-                } catch (Exception $e) {
-                    $form->error($e->getMessage());
-                }
+            if ($form->successed()) {
+                return $form->handle()->redirect();
             }
         }
 
@@ -460,12 +456,10 @@ class SubscriptionController extends BaseController
      *
      * @param SubscriptionOrderForm $form
      *
-     * @return array
+     * @return void
      */
-    public function orderFormValidate(SubscriptionOrderForm $form): array
+    public function orderFormValidate(SubscriptionOrderForm $form): void
     {
-        $data = [];
-
         if (!$form->handle()->verify()) {
             $form->error(__('Une erreur est survenue, impossible de valider votre inscription.', 'tify'));
         } else {
@@ -526,12 +520,23 @@ class SubscriptionController extends BaseController
 
             if (!$form->hasError()) {
                 $data = $form->handle()->all();
+
+                try {
+                    $order = $this->createOrder($data);
+
+                    $form->handle()->setRedirectUrl(
+                        $this->subscription()->route('payment-form')->getUrl([$order->getOrderKey()], true)
+                    );
+
+                    $form->handle()->success();
+                } catch (Exception $e) {
+                    $form->error($e->getMessage());
+                    $form->handle()->fail();
+                }
             } else {
                 $form->handle()->fail();
             }
         }
-
-        return $data;
     }
     /**/
 

@@ -4,7 +4,7 @@ namespace tiFy\Plugins\Subscription\Export\Order;
 
 use tiFy\Plugins\Subscription\SubscriptionAwareTrait;
 use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
-use tiFy\Template\Templates\PostListTable\DbBuilder as BaseDbBuilder;
+use tiFy\Wordpress\Template\Templates\PostListTable\DbBuilder as BaseDbBuilder;
 use tiFy\Wordpress\Contracts\Database\PostBuilder;
 use tiFy\Support\DateTime;
 use tiFy\Support\Proxy\Request;

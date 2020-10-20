@@ -3,7 +3,7 @@
 namespace tiFy\Plugins\Subscription\Export\Order;
 
 use tiFy\Plugins\Subscription\SubscriptionAwareTrait;
-use tiFy\Template\Templates\PostListTable\Db as BaseDb;
+use tiFy\Template\Factory\Db as BaseDb;
 
 class Db extends BaseDb
 {
