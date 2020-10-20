@@ -1,0 +1,46 @@
+{
+  "name": "presstify-plugins/subscription",
+  "description": "Extension PresstiFy de gestion d'abonnements.",
+  "type": "presstify-plugin",
+  "keywords": [
+    "presstify",
+    "plugins",
+    "subscription"
+  ],
+  "homepage": "https://svn.tigreblanc.fr/presstify-plugins/subscription/",
+  "time": "2020-10-20",
+  "license": "proprietary",
+  "authors": [
+    {
+      "name": "Jordy Manner",
+      "email": "jordy.manner@milkcreation.fr",
+      "role": "Developper"
+    }
+  ],
+  "repositories": [
+    {
+      "type": "composer",
+      "url": "https://composer.tigreblanc.fr/presstify/"
+    }
+  ],
+  "require": {
+    "composer/installers": "~1.0",
+    "presstify/framework": ">=1.4",
+    "presstify-plugins/transaction": "^2.0"
+  },
+  "autoload": {
+    "files": [
+      "helpers.php"
+    ],
+    "psr-4": {
+      "tiFy\\Plugins\\Subscription\\": ""
+    }
+  },
+  "minimum-stability": "dev",
+  "prefer-stable": true,
+  "config" : {
+    "optimize-autoloader": true,
+    "preferred-install": "dist",
+    "sort-packages": true
+  }
+}
