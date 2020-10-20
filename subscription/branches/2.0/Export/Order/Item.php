@@ -4,7 +4,7 @@ namespace tiFy\Plugins\Subscription\Export\Order;
 
 use tiFy\Plugins\Subscription\{SubscriptionAwareTrait, Order\QueryOrder};
 use tiFy\Template\Templates\ListTable\Contracts\Item as BaseItemContract;
-use tiFy\Template\Templates\PostListTable\Item as BaseItem;
+use tiFy\Wordpress\Template\Templates\PostListTable\Item as BaseItem;
 
 /**
  * @mixin QueryOrder
